@@ -67,7 +67,7 @@ if modo == "Panel Administrador (Tú)":
 
     # Organizar listas: Pendientes/En revisión/En progreso arriba, terminados abajo
     logos_por_hacer = [l for l in st.session_state.logos if l.get('estado', 'Pendiente') != "Terminado"]
-    logos_terminados = [l for l in st.session_state.logos if l.get('estado', 'Pendiente'] == "Terminado")
+    logos_terminados = [l for l in st.session_state.logos if l.get('estado', 'Pendiente') == "Terminado"]
     logos_ordenados_admin = logos_por_hacer + logos_terminados
 
     st.subheader("📋 Gestión de Trabajos")
@@ -134,7 +134,6 @@ if modo == "Panel Administrador (Tú)":
 
     st.subheader("📄 Generación de Factura / Corte Semanal")
     if st.button("Generar Corte Semanal"):
-        # Construir contenido de la factura general
         fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         contenido_factura = f"=========================================\n"
         contenido_factura += f"          PIXEL THREAD - FACTURA         \n"
@@ -166,7 +165,6 @@ if modo == "Panel Administrador (Tú)":
         
         st.success("¡Corte y factura generados con éxito!")
         
-        # Botón para descargar la factura generada
         st.download_button(
             label="⬇️ Descargar Factura / Corte en TXT",
             data=contenido_factura,
@@ -176,7 +174,7 @@ if modo == "Panel Administrador (Tú)":
 
 
 # ==========================================
-# 2. VISTAS DE CLIENTES
+# FUNCIÓN GENÉRICA PARA EL PORTAL DE CLIENTES
 # ==========================================
 def render_portal_cliente(nombre_cliente):
     st.title(f"👤 Portal de Cliente: {nombre_cliente}")
