@@ -5,7 +5,6 @@ from streamlit_autorefresh import st_autorefresh
 st.set_page_config(page_title="Pixel Thread - Portal de Clientes", layout="centered")
 
 # --- ACTUALIZACIÓN AUTOMÁTICA CADA 2 SEGUNDOS ---
-# 2000 milisegundos = 2 segundos
 st_autorefresh(interval=2000, limit=None, key="autorefresh_global")
 
 # --- INICIALIZAR DATOS GLOBALES EN LA SESIÓN ---
@@ -105,19 +104,19 @@ def render_portal_cliente(nombre_cliente):
         with st.form(key=f"form_{nombre_cliente}"):
             nombre_logo = st.text_input("Nombre del Logo / Diseño")
             archivo_subido = st.file_uploader("Sube tu archivo de imagen (PNG, JPG)", type=["png", "jpg", "jpeg"])
-            tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"])
+            
+            tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"], key=f"tipo_app_{nombre_cliente}")
             
             ubicacion_gorra = "N/A"
             detalle_gorra = "N/A"
             
             if tipo_aplicacion == "Gorra":
-                ubicacion_gorra = st.radio("Ubicación en la gorra:", ["Frontal", "Trasero", "Lateral"])
+                ubicacion_gorra = st.radio("Selecciona la ubicación en la gorra:", ["Frontal", "Trasero", "Lateral"], key=f"ubicacion_{nombre_cliente}")
                 
-                # Si es Frontal, pedir si es 3D o Plano. Si es Trasero o Lateral, se asume Plano directo.
                 if ubicacion_gorra == "Frontal":
-                    detalle_gorra = st.radio("Estilo para la parte frontal:", ["3D (Puff)", "Plano"])
+                    detalle_gorra = st.radio("Selecciona el estilo:", ["3D (Puff)", "Plano (Flat)"], key=f"detalle_{nombre_cliente}")
                 else:
-                    detalle_gorra = "Plano (Automático para lateral/trasero)"
+                    detalle_gorra = "Plano (Flat)"
             
             comentario_cliente = st.text_area("Comentarios o instrucciones adicionales (opcional)")
             
