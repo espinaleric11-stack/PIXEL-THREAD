@@ -96,12 +96,19 @@ if modo == "Panel Administrador (Tú)":
                     st.session_state.logos[i]['pago'] = nuevo_pago
                     st.rerun()
 
-            with st.expander("📤 Subir archivo de bordado final (.DST / .EMB / .PDF)"):
-                archivo_bordado = st.file_uploader("Sube el archivo listo para bordar", type=["dst", "emb", "pes", "jef", "pdf"], key=f"bordado_{logo['id']}")
-                if archivo_bordado:
-                    logo['archivo_bordado_nombre'] = archivo_bordado.name
-                    logo['archivo_bordado_bytes'] = archivo_bordado.getvalue()
-                    st.success(f"Archivo {archivo_bordado.name} guardado para descarga del cliente.")
+            with st.expander("📤 Subir múltiples archivos de bordado (.DST / .EMB / .PDF)"):
+                # Permitir múltiples archivos a la vez
+                archivos_bordado = st.file_uploader(
+                    "Sube los archivos listos para bordar", 
+                    type=["dst", "emb", "pes", "jef", "pdf"], 
+                    accept_multiple_files=True, 
+                    key=f"bordado_{logo['id']}"
+                )
+                if archivos_bordado:
+                    # Guardamos una lista con los bytes y nombres de cada archivo subido
+                    logo['archivos_multiples'] = [{"nombre": f.name, "bytes": f.getvalue()} for f in archivos_bordado]
+                    nombres_str = ", ".join([f.name for f in archivos_bordado])
+                    st.success(f"Archivos guardados correctamente: {nombres_str}")
 
             st.divider()
 
@@ -138,7 +145,14 @@ def render_portal_cliente(nombre_cliente):
                 st.rerun()
         else:
             nombre_logo = st.text_input("Nombre del Logo / Diseño", key=f"inp_nom_{nombre_cliente}")
-            archivo_subido = st.file_uploader("Sube tu archivo original (PNG, JPG, Vector)", type=["png", "jpg", "jpeg", "ai", "pdf"], key=f"inp_file_{nombre_cliente}")
+            
+            # Permitir subir varios archivos originales a la vez
+            archivos_subidos = st.file_uploader(
+                "Sube tus archivos originales (puedes seleccionar varios a la vez)", 
+                type=["png", "jpg", "jpeg", "ai", "pdf"], 
+                accept_multiple_files=True, 
+                key=f"inp_file_{nombre_cliente}"
+            )
             
             tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"], key=f"tipo_app_{nombre_cliente}")
             
@@ -156,11 +170,12 @@ def render_portal_cliente(nombre_cliente):
             
             if st.button("Enviar Logo a Pixel Thread", key=f"btn_enviar_{nombre_cliente}"):
                 if nombre_logo:
-                    nombre_archivo = archivo_subido.name if archivo_subido else "Sin archivo adjunto"
+                    nombre_archivo = ", ".join([f.name for f in archivos_subidos]) if archivos_subidos else "Sin archivo adjunto"
                     img_obj = None
-                    if archivo_subido is not None:
+                    if archivos_subidos:
                         try:
-                            img_obj = Image.open(archivo_subido)
+                            # Tomamos la primera imagen para mostrar la miniatura en pantalla
+                            img_obj = Image.open(archivos_subidos[0])
                         except Exception:
                             pass
 
@@ -206,7 +221,7 @@ def render_portal_cliente(nombre_cliente):
             st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
             st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
             st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
-            st.write(f"**Archivo:** `📁 {logo.get('archivo', 'N/A')}`")
+            st.write(f"**Archivos:** `📁 {logo.get('archivo', 'N/A')}`")
         
         estado_logo = logo.get('estado', 'Pendiente')
         if estado_logo == "Pendiente":
@@ -243,7 +258,7 @@ def render_portal_cliente(nombre_cliente):
         st.write(f"Precio estimado: **{precio_mostrar}**")
         st.divider()
 
-    # TRABAJOS REALIZADOS E HISTORIAL CON DESCARGA DE ARCHIVO BORDADO
+    # TRABAJOS REALIZADOS E HISTORIAL CON DESCARGA DE ARCHIVOS MÚLTIPLES
     if logos_realizados:
         st.subheader("✅ Trabajos Realizados y Descargas")
         for logo in logos_realizados:
@@ -261,7 +276,18 @@ def render_portal_cliente(nombre_cliente):
             
             st.success("✅ Estado: Digitalización Finalizada")
             
-            if 'archivo_bordado_bytes' in logo and logo['archivo_bordado_bytes']:
+            # Si subiste múltiples archivos de bordado, mostramos un botón de descarga para cada uno
+            if 'archivos_multiples' in logo and logo['archivos_multiples']:
+                st.write("⬇️ **Descarga tus archivos listos:**")
+                for idx, arch in enumerate(logo['archivos_multiples']):
+                    st.download_button(
+                        label=f"Descargar: {arch['nombre']}",
+                        data=arch['bytes'],
+                        file_name=arch['nombre'],
+                        mime="application/octet-stream",
+                        key=f"dl_multi_{logo['id']}_{idx}"
+                    )
+            elif 'archivo_bordado_bytes' in logo and logo['archivo_bordado_bytes']:
                 st.download_button(
                     label=f"⬇️ Descargar Archivo Listo: {logo.get('archivo_bordado_nombre', 'bordado.dst')}",
                     data=logo['archivo_bordado_bytes'],
@@ -270,7 +296,7 @@ def render_portal_cliente(nombre_cliente):
                     key=f"dl_{logo['id']}"
                 )
             else:
-                st.info("📁 El archivo de bordado estará disponible para descarga en breve.")
+                st.info("📁 Los archivos de bordado estarán disponibles para descarga en breve.")
             
             precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
             st.write(f"Precio final: **{precio_mostrar}** | Pago: **{logo.get('pago', 'Pendiente')}**")
