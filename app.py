@@ -6,9 +6,9 @@ st.set_page_config(page_title="Pixel Thread - Portal de Clientes", layout="cente
 # --- INICIALIZAR DATOS GLOBALES EN LA SESIÓN ---
 if "logos" not in st.session_state or "imagen_obj" not in st.session_state.logos[0]:
     st.session_state.logos = [
-        {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "tipo": "Tela", "detalle_gorra": "N/A", "comentario": "Urgente para entrega", "archivo": "leon.png", "imagen_obj": None},
-        {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "tipo": "Gorra", "detalle_gorra": "3D (Puff)", "comentario": "Centrado en frente", "archivo": "cafe.png", "imagen_obj": None},
-        {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "tipo": "Tela", "detalle_gorra": "N/A", "comentario": "Ninguno", "archivo": "escudo.png", "imagen_obj": None},
+        {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "comentario": "Urgente", "archivo": "leon.png", "imagen_obj": None},
+        {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "tipo": "Gorra", "ubicacion_gorra": "Frontal", "detalle_gorra": "3D (Puff)", "comentario": "Centrado", "archivo": "cafe.png", "imagen_obj": None},
+        {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "comentario": "Ninguno", "archivo": "escudo.png", "imagen_obj": None},
     ]
 
 # --- MENÚ DE NAVEGACIÓN RÁPIDA (Simulador de vistas) ---
@@ -40,7 +40,6 @@ if modo == "Panel Administrador (Tú)":
             col_img, col_info = st.columns([1, 3])
             
             with col_img:
-                # Mostrar miniatura si existe el objeto de imagen
                 if logo.get('imagen_obj') is not None:
                     st.image(logo['imagen_obj'], caption="Miniatura", width=100)
                 else:
@@ -48,7 +47,7 @@ if modo == "Panel Administrador (Tú)":
 
             with col_info:
                 st.markdown(f"### 🧵 {logo['nombre']} *({logo['cliente']})*")
-                st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Detalle Gorra:** {logo.get('detalle_gorra', 'N/A')}")
+                st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
                 st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
                 st.write(f"**Archivo:** `📁 {logo.get('archivo', 'Sin archivo')}`")
                 st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
@@ -102,9 +101,17 @@ def render_portal_cliente(nombre_cliente):
             archivo_subido = st.file_uploader("Sube tu archivo de imagen (PNG, JPG)", type=["png", "jpg", "jpeg"])
             tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"])
             
+            ubicacion_gorra = "N/A"
             detalle_gorra = "N/A"
+            
             if tipo_aplicacion == "Gorra":
-                detalle_gorra = st.radio("Estilo para Gorra:", ["Plano", "3D (Puff)"])
+                ubicacion_gorra = st.radio("Ubicación en la gorra:", ["Frontal", "Trasero", "Lateral"])
+                
+                # Si es Frontal, pedir si es 3D o Plano. Si es Trasero o Lateral, se asume Plano directo.
+                if ubicacion_gorra == "Frontal":
+                    detalle_gorra = st.radio("Estilo para la parte frontal:", ["3D (Puff)", "Plano"])
+                else:
+                    detalle_gorra = "Plano (Automático para lateral/trasero)"
             
             comentario_cliente = st.text_area("Comentarios o instrucciones adicionales (opcional)")
             
@@ -113,7 +120,6 @@ def render_portal_cliente(nombre_cliente):
                 if nombre_logo:
                     nombre_archivo = archivo_subido.name if archivo_subido else "Sin archivo adjunto"
                     
-                    # Procesar imagen para miniatura si es válida
                     img_obj = None
                     if archivo_subido is not None:
                         try:
@@ -129,6 +135,7 @@ def render_portal_cliente(nombre_cliente):
                         "precio_dop": 300.0,
                         "estado": "Pendiente",
                         "tipo": tipo_aplicacion,
+                        "ubicacion_gorra": ubicacion_gorra,
                         "detalle_gorra": detalle_gorra,
                         "comentario": comentario_cliente if comentario_cliente else "Ninguno",
                         "archivo": nombre_archivo,
@@ -156,7 +163,7 @@ def render_portal_cliente(nombre_cliente):
                 
         with col_info:
             st.markdown(f"### 🧵 {logo['nombre']}")
-            st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
+            st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
             st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
             st.write(f"**Archivo:** `📁 {logo.get('archivo', 'N/A')}`")
         
