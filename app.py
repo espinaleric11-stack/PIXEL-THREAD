@@ -32,7 +32,7 @@ st.sidebar.caption("🔄 Actualización automática activa (cada 2 seg)")
 # ==========================================
 if modo == "Panel Administrador (Tú)":
     st.title("🎛️ Panel de Control - Pixel Thread")
-    st.write("Administra el flujo de trabajo industrial, el estado de pagos y la entrega de archivos de bordado (.DST/.EMB).")
+    st.write("Administra el flujo de trabajo industrial, el estado de pagos y la entrega de archivos de bordado (.DST/.EMB/.PDF).")
 
     total_usd = sum(l.get('precio_usd', 5.0) for l in st.session_state.logos if l.get('pago', 'Pendiente') == "Pagado")
     total_dop = sum(l.get('precio_dop', 300.0) for l in st.session_state.logos if l.get('pago', 'Pendiente') == "Pagado")
@@ -96,8 +96,8 @@ if modo == "Panel Administrador (Tú)":
                     st.session_state.logos[i]['pago'] = nuevo_pago
                     st.rerun()
 
-            with st.expander("📤 Subir archivo de bordado final (.DST / .EMB)"):
-                archivo_bordado = st.file_uploader("Sube el archivo listo para bordar", type=["dst", "emb", "pes", "jef"], key=f"bordado_{logo['id']}")
+            with st.expander("📤 Subir archivo de bordado final (.DST / .EMB / .PDF)"):
+                archivo_bordado = st.file_uploader("Sube el archivo listo para bordar", type=["dst", "emb", "pes", "jef", "pdf"], key=f"bordado_{logo['id']}")
                 if archivo_bordado:
                     logo['archivo_bordado_nombre'] = archivo_bordado.name
                     logo['archivo_bordado_bytes'] = archivo_bordado.getvalue()
