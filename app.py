@@ -52,7 +52,6 @@ if modo == "Panel Administrador (Tú)":
     st.subheader("📋 Lista de Trabajos")
 
     for logo in logos_ordenados_admin:
-        # Encontramos el índice real en la lista global para modificarlo correctamente
         i = st.session_state.logos.index(logo)
         
         with st.container():
@@ -170,12 +169,16 @@ def render_portal_cliente(nombre_cliente):
                 else:
                     st.error("Por favor, ingresa un nombre para el logo.")
 
-    st.subheader("📋 Tus Trabajos Activos e Historial")
+    # --- SEPARAR LISTAS PARA EL CLIENTE: POR REALIZAR VS REALIZADOS ---
+    logos_por_realizar = [l for l in logos_cliente if l['estado'] != "Terminado"]
+    logos_realizados = [l for l in logos_cliente if l['estado'] == "Terminado"]
 
-    if not logos_cliente:
-        st.info("No tienes logos registrados actualmente.")
+    # 1. SECCIÓN DE LOGOS POR REALIZAR (ARRIBA)
+    st.subheader("⏳ Trabajos por Realizar")
+    if not logos_por_realizar:
+        st.info("No tienes trabajos pendientes por realizar actualmente.")
 
-    for logo in logos_cliente:
+    for logo in logos_por_realizar:
         col_img, col_info = st.columns([1, 3])
         
         with col_img:
@@ -190,11 +193,9 @@ def render_portal_cliente(nombre_cliente):
             st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
             st.write(f"**Archivo:** `📁 {logo.get('archivo', 'N/A')}`")
         
-        # MOSTRAR ESTADO Y LUZ VERDE
         if logo['estado'] == "Pendiente":
             st.info("⏳ Estado: En espera de turno")
             
-            # --- OPCIONES DE MODIFICAR O ELIMINAR (SOLO SI ESTÁ PENDIENTE) ---
             col_mod, col_elim = st.columns(2)
             
             with col_mod:
@@ -216,7 +217,6 @@ def render_portal_cliente(nombre_cliente):
                     st.rerun()
                     
         elif logo['estado'] == "En Progreso":
-            # LA LUZ VERDE SOLICITADA (BLOQUEA MODIFICAR/ELIMINAR)
             st.markdown(
                 """
                 <div style="background-color: #d1fae5; border-left: 6px solid #10b981; padding: 10px; border-radius: 5px; color: #065f46; font-weight: bold;">
@@ -225,12 +225,34 @@ def render_portal_cliente(nombre_cliente):
                 """, 
                 unsafe_allow_html=True
             )
-        else:
-            st.success("✅ Estado: Logo Terminado / Agregado a la factura")
         
         precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
         st.write(f"Precio unitario: **{precio_mostrar}**")
         st.divider()
+
+    # 2. SECCIÓN DE LOGOS REALIZADOS / HISTORIAL (ABAJO)
+    if logos_realizados:
+        st.subheader("✅ Trabajos Realizados (Historial)")
+        for logo in logos_realizados:
+            col_img, col_info = st.columns([1, 3])
+            
+            with col_img:
+                if logo.get('imagen_obj') is not None:
+                    st.image(logo['imagen_obj'], caption="Tu Diseño", width=100)
+                else:
+                    st.info("Sin miniatura")
+                    
+            with col_info:
+                st.markdown(f"### 🧵 {logo['nombre']}")
+                st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
+                st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
+                st.write(f"**Archivo:** `📁 {logo.get('archivo', 'N/A')}`")
+            
+            st.success("✅ Estado: Logo Terminado / Agregado a la factura")
+            
+            precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
+            st.write(f"Precio unitario: **{precio_mostrar}**")
+            st.divider()
 
 
 # ==========================================
