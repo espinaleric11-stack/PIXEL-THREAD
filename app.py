@@ -1,7 +1,12 @@
 import streamlit as st
 from PIL import Image
+from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="Pixel Thread - Portal de Clientes", layout="centered")
+
+# --- ACTUALIZACIÓN AUTOMÁTICA CADA 2 SEGUNDOS ---
+# 2000 milisegundos = 2 segundos
+st_autorefresh(interval=2000, limit=None, key="autorefresh_global")
 
 # --- INICIALIZAR DATOS GLOBALES EN LA SESIÓN ---
 if "logos" not in st.session_state or "imagen_obj" not in st.session_state.logos[0]:
@@ -17,6 +22,7 @@ modo = st.sidebar.radio("Selecciona la Vista:", ["Panel Administrador (Tú)", "P
 
 st.sidebar.divider()
 st.sidebar.info("💡 Tarifa oficial: $5.00 USD / $300.00 DOP por logo digitalizado.")
+st.sidebar.caption("🔄 Actualización automática activa (cada 2 seg)")
 
 # ==========================================
 # 1. VISTA ADMINISTRADOR (Tú controlas todo)
