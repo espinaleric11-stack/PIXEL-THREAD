@@ -1,13 +1,14 @@
 import streamlit as st
+from PIL import Image
 
 st.set_page_config(page_title="Pixel Thread - Portal de Clientes", layout="centered")
 
 # --- INICIALIZAR DATOS GLOBALES EN LA SESIÓN ---
-if "logos" not in st.session_state or "archivo" not in st.session_state.logos[0]:
+if "logos" not in st.session_state or "imagen_obj" not in st.session_state.logos[0]:
     st.session_state.logos = [
-        {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "tipo": "Tela", "detalle_gorra": "N/A", "comentario": "Urgente para entrega", "archivo": "leon.png"},
-        {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "tipo": "Gorra", "detalle_gorra": "3D (Puff)", "comentario": "Centrado en frente", "archivo": "cafe.png"},
-        {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "tipo": "Tela", "detalle_gorra": "N/A", "comentario": "Ninguno", "archivo": "escudo.png"},
+        {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "tipo": "Tela", "detalle_gorra": "N/A", "comentario": "Urgente para entrega", "archivo": "leon.png", "imagen_obj": None},
+        {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "tipo": "Gorra", "detalle_gorra": "3D (Puff)", "comentario": "Centrado en frente", "archivo": "cafe.png", "imagen_obj": None},
+        {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "tipo": "Tela", "detalle_gorra": "N/A", "comentario": "Ninguno", "archivo": "escudo.png", "imagen_obj": None},
     ]
 
 # --- MENÚ DE NAVEGACIÓN RÁPIDA (Simulador de vistas) ---
@@ -22,7 +23,7 @@ st.sidebar.info("💡 Tarifa oficial: $5.00 USD / $300.00 DOP por logo digitaliz
 # ==========================================
 if modo == "Panel Administrador (Tú)":
     st.title("🎛️ Panel de Control - Pixel Thread")
-    st.write("Gestiona el estado de los logos. Al marcar un logo como **En Progreso**, se encenderá la luz verde y se bloquearán las opciones de modificar/eliminar para el cliente.")
+    st.write("Gestiona el estado de los logos. Al marcar un logo como **En Progreso**, se encenderá la luz verde y se bloquearán las opciones para el cliente.")
 
     total_usd = sum(l.get('precio_usd', 5.0) for l in st.session_state.logos if l['estado'] == "Terminado")
     total_dop = sum(l.get('precio_dop', 300.0) for l in st.session_state.logos if l['estado'] == "Terminado")
@@ -36,11 +37,21 @@ if modo == "Panel Administrador (Tú)":
 
     for i, logo in enumerate(st.session_state.logos):
         with st.container():
-            st.markdown(f"### 🧵 {logo['nombre']} *({logo['cliente']})*")
-            st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Detalle Gorra:** {logo.get('detalle_gorra', 'N/A')}")
-            st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
-            st.write(f"**Archivo:** `📁 {logo.get('archivo', 'Sin archivo')}`")
-            st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
+            col_img, col_info = st.columns([1, 3])
+            
+            with col_img:
+                # Mostrar miniatura si existe el objeto de imagen
+                if logo.get('imagen_obj') is not None:
+                    st.image(logo['imagen_obj'], caption="Miniatura", width=100)
+                else:
+                    st.info("Sin miniatura visual")
+
+            with col_info:
+                st.markdown(f"### 🧵 {logo['nombre']} *({logo['cliente']})*")
+                st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Detalle Gorra:** {logo.get('detalle_gorra', 'N/A')}")
+                st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
+                st.write(f"**Archivo:** `📁 {logo.get('archivo', 'Sin archivo')}`")
+                st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
             
             estado_actual = logo['estado']
             
@@ -88,7 +99,7 @@ def render_portal_cliente(nombre_cliente):
     with st.expander("➕ Enviar un Nuevo Logo a Digitalizar"):
         with st.form(key=f"form_{nombre_cliente}"):
             nombre_logo = st.text_input("Nombre del Logo / Diseño")
-            archivo_subido = st.file_uploader("Sube tu archivo", type=["png", "jpg", "jpeg", "dst", "emb", "pdf"])
+            archivo_subido = st.file_uploader("Sube tu archivo de imagen (PNG, JPG)", type=["png", "jpg", "jpeg"])
             tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"])
             
             detalle_gorra = "N/A"
@@ -101,6 +112,15 @@ def render_portal_cliente(nombre_cliente):
             if submitted:
                 if nombre_logo:
                     nombre_archivo = archivo_subido.name if archivo_subido else "Sin archivo adjunto"
+                    
+                    # Procesar imagen para miniatura si es válida
+                    img_obj = None
+                    if archivo_subido is not None:
+                        try:
+                            img_obj = Image.open(archivo_subido)
+                        except Exception:
+                            pass
+
                     nuevo_logo = {
                         "id": len(st.session_state.logos) + 1,
                         "cliente": nombre_cliente,
@@ -111,7 +131,8 @@ def render_portal_cliente(nombre_cliente):
                         "tipo": tipo_aplicacion,
                         "detalle_gorra": detalle_gorra,
                         "comentario": comentario_cliente if comentario_cliente else "Ninguno",
-                        "archivo": nombre_archivo
+                        "archivo": nombre_archivo,
+                        "imagen_obj": img_obj
                     }
                     st.session_state.logos.append(nuevo_logo)
                     st.success("¡Logo enviado exitosamente!")
@@ -125,10 +146,19 @@ def render_portal_cliente(nombre_cliente):
         st.info("No tienes logos registrados actualmente.")
 
     for logo in logos_cliente:
-        st.markdown(f"### 🧵 {logo['nombre']}")
-        st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
-        st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
-        st.write(f"**Archivo adjunto:** `📁 {logo.get('archivo', 'N/A')}`")
+        col_img, col_info = st.columns([1, 3])
+        
+        with col_img:
+            if logo.get('imagen_obj') is not None:
+                st.image(logo['imagen_obj'], caption="Tu Diseño", width=100)
+            else:
+                st.info("Sin miniatura")
+                
+        with col_info:
+            st.markdown(f"### 🧵 {logo['nombre']}")
+            st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
+            st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
+            st.write(f"**Archivo:** `📁 {logo.get('archivo', 'N/A')}`")
         
         # MOSTRAR ESTADO Y LUZ VERDE
         if logo['estado'] == "Pendiente":
