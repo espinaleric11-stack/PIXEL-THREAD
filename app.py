@@ -48,6 +48,35 @@ if modo == "Panel Administrador (Tú)":
 
     st.divider()
 
+    # --- SECCIÓN DE CONTROL Y REINICIO POR CLIENTE ---
+    st.subheader("👥 Control y Cierre de Ciclo por Cliente")
+    st.write("Revisa los pagos y reinicia el acumulador semanal individual de cada cliente cuando se complete el pago:")
+    
+    # Obtener lista única de clientes actuales
+    clientes_unicos = list(set(l.get('cliente', 'Cliente') for l in st.session_state.logos))
+    
+    for cli in clientes_unicos:
+        # Calcular total acumulado actual de terminados para este cliente
+        logos_cli_term = [l for l in st.session_state.logos if l.get('cliente') == cli and l.get('estado', 'Pendiente') == "Terminado"]
+        sub_usd = sum(l.get('precio_usd', 5.0) for l in logos_cli_term)
+        sub_dop = sum(l.get('precio_dop', 300.0) for l in logos_cli_term)
+        
+        with st.expander(f"👤 Cliente: {cli} — Acumulado: ${sub_usd:.2f} USD / RD$ {sub_dop:,.2f}"):
+            c_info, c_btn = st.columns([2, 1])
+            with c_info:
+                st.write(f"Trabajos terminados pendientes de cerrar ciclo: **{len(logos_cli_term)}**")
+            with c_btn:
+                if st.button(f"🔄 Reiniciar Ciclo de {cli}", key=f"reset_cli_{cli}"):
+                    # Marcar todos los terminados de este cliente como Pagado y opcionalmente archivarlos o cambiar su estado para reiniciar el conteo
+                    for logo in st.session_state.logos:
+                        if logo.get('cliente') == cli and logo.get('estado', 'Pendiente') == "Terminado":
+                            logo['pago'] = "Pagado"
+                            logo['estado'] = "Archivado/Pagado" # Los saca del acumulador semanal actual
+                    st.success(f"¡Ciclo de {cli} reiniciado con éxito!")
+                    st.rerun()
+
+    st.divider()
+
     # --- SECCIÓN DE RECIBOS DE PAGO ENVIADOS POR CLIENTES ---
     st.subheader("🧾 Recibos de Pago Subidos por Clientes")
     if st.session_state.recibos_pago:
@@ -65,9 +94,10 @@ if modo == "Panel Administrador (Tú)":
 
     st.divider()
 
-    # Organizar listas: Pendientes/En revisión/En progreso arriba, terminados abajo
-    logos_por_hacer = [l for l in st.session_state.logos if l.get('estado', 'Pendiente') != "Terminado"]
-    logos_terminados = [l for l in st.session_state.logos if l.get('estado', 'Pendiente') == "Terminado"]
+    # Organizar listas: Mostrar solo los que no estén archivados por corte arriba
+    logos_activos_admin = [l for l in st.session_state.logos if l.get('estado') != "Archivado/Pagado"]
+    logos_por_hacer = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') != "Terminado"]
+    logos_terminados = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') == "Terminado"]
     logos_ordenados_admin = logos_por_hacer + logos_terminados
 
     st.subheader("📋 Gestión de Trabajos")
@@ -132,7 +162,7 @@ if modo == "Panel Administrador (Tú)":
 
             st.divider()
 
-    st.subheader("📄 Generación de Factura / Corte Semanal")
+    st.subheader("📄 Generación de Factura / Corte Semanal General")
     if st.button("Generar Corte Semanal"):
         fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         contenido_factura = f"=========================================\n"
@@ -182,7 +212,8 @@ def render_portal_cliente(nombre_cliente):
     
     divisa = st.radio("Selecciona tu moneda:", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"], horizontal=True, key=f"divisa_{nombre_cliente}")
     
-    logos_cliente = [l for l in st.session_state.logos if l.get('cliente') == nombre_cliente]
+    # Solo mostrar logos activos (no archivados por corte) para el cliente
+    logos_cliente = [l for l in st.session_state.logos if l.get('cliente') == nombre_cliente and l.get('estado') != "Archivado/Pagado"]
     
     col_metrica, col_recibo = st.columns(2)
 
