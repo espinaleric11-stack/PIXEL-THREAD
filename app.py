@@ -197,7 +197,6 @@ if modo == "Panel Administrador (Tú)":
 # ==========================================
 elif modo == "Portal de Clientes (Acceso Seguro)":
     
-    # Si ningún cliente ha iniciado sesión, mostrar pantalla de Login
     if st.session_state.cliente_logeado is None:
         st.title("🔐 Acceso al Portal de Clientes - Pixel Thread")
         st.write("Por favor, introduce tu usuario y contraseña asignados para acceder únicamente a tus pedidos.")
@@ -218,11 +217,9 @@ elif modo == "Portal de Clientes (Acceso Seguro)":
                 else:
                     st.error("El usuario ingresado no existe o no está registrado.")
     
-    # Si ya inició sesión, mostrar su portal privado
     else:
         nombre_cliente = st.session_state.cliente_logeado
         
-        # Botón superior para cerrar sesión de manera segura
         col_title, col_logout = st.columns([3, 1])
         with col_title:
             st.title(f"👤 Portal Privado de: {nombre_cliente}")
@@ -337,7 +334,6 @@ elif modo == "Portal de Clientes (Acceso Seguro)":
         if not logos_por_realizar:
             st.info("No tienes trabajos pendientes actualmente.")
 
-        # Cola global activa para calcular turno
         cola_global_activa = [l for l in st.session_state.logos if l.get('estado', 'Pendiente') != "Terminado" and l.get('estado') != "Archivado/Pagado"]
 
         for logo in logos_por_realizar:
@@ -389,7 +385,7 @@ elif modo == "Portal de Clientes (Acceso Seguro)":
                 st.markdown(
                     f"""
                     <div style="background-color: #d1fae5; border-left: 6px solid #10b981; padding: 10px; border-radius: 5px; color: #065f46; font-weight: bold;">
-                        🟢 ¡DIGITALIZANDO EN PROGESO! (Tu turno #{posicion_en_cola} se está trabajando ahora mismo - Bloqueado para cambios)
+                        🟢 ¡DIGITALIZANDO EN PROGRESO! (Tu turno #{posicion_en_cola} se está trabajando ahora mismo - Bloqueado para cambios)
                     </div>
                     """, 
                     unsafe_allow_html=True
