@@ -8,6 +8,13 @@ st.set_page_config(page_title="Pixel Thread - Portal Profesional", layout="cente
 # --- ACTUALIZACIÓN AUTOMÁTICA CADA 2 SEGUNDOS ---
 st_autorefresh(interval=2000, limit=None, key="autorefresh_global")
 
+# --- INICIALIZAR LISTA DE CLIENTES DINÁMICA ---
+if "clientes_registrados" not in st.session_state:
+    st.session_state.clientes_registrados = {
+        "Cliente A": "Dólares (USD - $)",
+        "Cliente B": "Pesos Dominicanos (DOP - RD$)"
+    }
+
 # --- INICIALIZAR DATOS GLOBALES EN LA SESIÓN CON TODAS LAS LLAVES ---
 if "logos" not in st.session_state or not st.session_state.logos or "pago" not in st.session_state.logos[0]:
     st.session_state.logos = [
@@ -26,7 +33,8 @@ if "form_enviado" not in st.session_state:
 
 # --- MENÚ DE NAVEGACIÓN RÁPIDA ---
 st.sidebar.title("Pixel Thread 🧵")
-modo = st.sidebar.radio("Selecciona la Vista:", ["Panel Administrador (Tú)", "Portal Cliente A", "Portal Cliente B"])
+lista_vistas = ["Panel Administrador (Tú)"] + [f"Portal {cli}" for cli in st.session_state.clientes_registrados.keys()]
+modo = st.sidebar.radio("Selecciona la Vista:", lista_vistas)
 
 st.sidebar.divider()
 st.sidebar.info("💡 Tarifa oficial: $5.00 USD / $300.00 DOP por logo digitalizado.")
@@ -48,30 +56,48 @@ if modo == "Panel Administrador (Tú)":
 
     st.divider()
 
+    # --- SECCIÓN PRINCIPAL: AGREGAR NUEVOS CLIENTES (¡ARRIBA PARA FÁCIL ACCESO!) ---
+    st.subheader("➕ Registrar Nuevo Cliente y su Divisa")
+    with st.form(key="form_nuevo_cliente"):
+        col_nc1, col_nc2 = st.columns(2)
+        with col_nc1:
+            nuevo_nombre_cli = st.text_input("Nombre del Cliente o Empresa")
+        with col_nc2:
+            nueva_divisa_cli = st.selectbox("Moneda Principal / Divisa", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"])
+        
+        btn_crear_cli = st.form_submit_button("Registrar Cliente")
+        if btn_crear_cli:
+            if nuevo_nombre_cli:
+                if nuevo_nombre_cli in st.session_state.clientes_registrados:
+                    st.error("¡Este cliente ya está registrado!")
+                else:
+                    st.session_state.clientes_registrados[nuevo_nombre_cli] = nueva_divisa_cli
+                    st.success(f"¡Cliente '{nuevo_nombre_cli}' agregado con éxito! Ya aparece en el menú lateral.")
+                    st.rerun()
+            else:
+                st.error("Por favor, ingresa un nombre para el cliente.")
+
+    st.divider()
+
     # --- SECCIÓN DE CONTROL Y REINICIO POR CLIENTE ---
     st.subheader("👥 Control y Cierre de Ciclo por Cliente")
     st.write("Revisa los pagos y reinicia el acumulador semanal individual de cada cliente cuando se complete el pago:")
     
-    # Obtener lista única de clientes actuales
-    clientes_unicos = list(set(l.get('cliente', 'Cliente') for l in st.session_state.logos))
-    
-    for cli in clientes_unicos:
-        # Calcular total acumulado actual de terminados para este cliente
+    for cli in st.session_state.clientes_registrados.keys():
         logos_cli_term = [l for l in st.session_state.logos if l.get('cliente') == cli and l.get('estado', 'Pendiente') == "Terminado"]
         sub_usd = sum(l.get('precio_usd', 5.0) for l in logos_cli_term)
         sub_dop = sum(l.get('precio_dop', 300.0) for l in logos_cli_term)
         
-        with st.expander(f"👤 Cliente: {cli} — Acumulado: ${sub_usd:.2f} USD / RD$ {sub_dop:,.2f}"):
+        with st.expander(f"👤 Cliente: {cli} — Acumulado Terminado: ${sub_usd:.2f} USD / RD$ {sub_dop:,.2f}"):
             c_info, c_btn = st.columns([2, 1])
             with c_info:
                 st.write(f"Trabajos terminados pendientes de cerrar ciclo: **{len(logos_cli_term)}**")
             with c_btn:
                 if st.button(f"🔄 Reiniciar Ciclo de {cli}", key=f"reset_cli_{cli}"):
-                    # Marcar todos los terminados de este cliente como Pagado y opcionalmente archivarlos o cambiar su estado para reiniciar el conteo
                     for logo in st.session_state.logos:
                         if logo.get('cliente') == cli and logo.get('estado', 'Pendiente') == "Terminado":
                             logo['pago'] = "Pagado"
-                            logo['estado'] = "Archivado/Pagado" # Los saca del acumulador semanal actual
+                            logo['estado'] = "Archivado/Pagado"
                     st.success(f"¡Ciclo de {cli} reiniciado con éxito!")
                     st.rerun()
 
@@ -94,7 +120,6 @@ if modo == "Panel Administrador (Tú)":
 
     st.divider()
 
-    # Organizar listas: Mostrar solo los que no estén archivados por corte arriba
     logos_activos_admin = [l for l in st.session_state.logos if l.get('estado') != "Archivado/Pagado"]
     logos_por_hacer = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') != "Terminado"]
     logos_terminados = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') == "Terminado"]
@@ -123,7 +148,6 @@ if modo == "Panel Administrador (Tú)":
             
             estado_actual = logo.get('estado', 'Pendiente')
             
-            # --- CONTROLES DE ESTADO PROFESIONAL ---
             c1, c2, c3 = st.columns(3)
             
             if estado_actual == "Pendiente":
@@ -210,9 +234,9 @@ def render_portal_cliente(nombre_cliente):
     st.title(f"👤 Portal de Cliente: {nombre_cliente}")
     st.write("Bienvenido a Pixel Thread. Gestiona tus solicitudes y descarga tus archivos de bordado digitalizados.")
     
-    divisa = st.radio("Selecciona tu moneda:", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"], horizontal=True, key=f"divisa_{nombre_cliente}")
+    divisa_default = st.session_state.clientes_registrados.get(nombre_cliente, "Dólares (USD - $)")
+    divisa = st.radio("Selecciona tu moneda:", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"], index=0 if "Dólares" in divisa_default else 1, horizontal=True, key=f"divisa_{nombre_cliente}")
     
-    # Solo mostrar logos activos (no archivados por corte) para el cliente
     logos_cliente = [l for l in st.session_state.logos if l.get('cliente') == nombre_cliente and l.get('estado') != "Archivado/Pagado"]
     
     col_metrica, col_recibo = st.columns(2)
@@ -237,7 +261,6 @@ def render_portal_cliente(nombre_cliente):
 
     st.divider()
 
-    # --- SECCIÓN PARA NUEVO PEDIDO ---
     with st.expander("➕ Enviar un Nuevo Logo a Digitalizar", expanded=not st.session_state.form_enviado):
         if st.session_state.form_enviado:
             st.success("✅ ¡ORDEN AGREGADA CORRECTAMENTE!")
@@ -300,10 +323,8 @@ def render_portal_cliente(nombre_cliente):
                 else:
                     st.error("Por favor, ingresa un nombre para el logo.")
 
-    # --- SEPARAR LISTAS CLIENTE: POR REALIZAR VS REALIZADOS ---
     logos_por_realizar = [l for l in logos_cliente if l.get('estado', 'Pendiente') != "Terminado"]
-    logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
-
+    
     st.subheader("⏳ Trabajos por Realizar")
     if not logos_por_realizar:
         st.info("No tienes trabajos pendientes actualmente.")
@@ -357,7 +378,7 @@ def render_portal_cliente(nombre_cliente):
         st.write(f"Precio estimado: **{precio_mostrar}**")
         st.divider()
 
-    # TRABAJOS REALIZADOS E HISTORIAL CON DESCARGA DE ARCHIVOS MÚLTIPLES
+    logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
     if logos_realizados:
         st.subheader("✅ Trabajos Realizados y Descargas")
         for logo in logos_realizados:
@@ -402,11 +423,11 @@ def render_portal_cliente(nombre_cliente):
 
 
 # ==========================================
-# 2. VISTAS DE CLIENTES
+# GESTIÓN DINÁMICA DE VISTAS DE CLIENTES
 # ==========================================
 if modo == "Panel Administrador (Tú)":
     pass
-elif modo == "Portal Cliente A":
-    render_portal_cliente("Cliente A")
-elif modo == "Portal Cliente B":
-    render_portal_cliente("Cliente B")
+else:
+    nombre_cliente_actual = modo.replace("Portal ", "")
+    if nombre_cliente_actual in st.session_state.clientes_registrados:
+        render_portal_cliente(nombre_cliente_actual)
