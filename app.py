@@ -22,9 +22,8 @@ st.sidebar.info("💡 Tarifa oficial: $5.00 USD / $300.00 DOP por logo digitaliz
 # ==========================================
 if modo == "Panel Administrador (Tú)":
     st.title("🎛️ Panel de Control - Pixel Thread")
-    st.write("Gestiona el estado de los logos. Al marcar un logo como **En Progreso**, se encenderá la luz verde en el portal de tu cliente.")
+    st.write("Gestiona el estado de los logos. Al marcar un logo como **En Progreso**, se encenderá la luz verde y se bloquearán las opciones de modificar/eliminar para el cliente.")
 
-    # Calcular acumulados de la semana de forma segura
     total_usd = sum(l.get('precio_usd', 5.0) for l in st.session_state.logos if l['estado'] == "Terminado")
     total_dop = sum(l.get('precio_dop', 300.0) for l in st.session_state.logos if l['estado'] == "Terminado")
     
@@ -39,7 +38,7 @@ if modo == "Panel Administrador (Tú)":
         with st.container():
             st.markdown(f"### 🧵 {logo['nombre']} *({logo['cliente']})*")
             st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Detalle Gorra:** {logo.get('detalle_gorra', 'N/A')}")
-            st.write(f"**Comentario del cliente:** {logo.get('comentario', 'Ninguno')}")
+            st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
             st.write(f"**Archivo:** `📁 {logo.get('archivo', 'Sin archivo')}`")
             st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
             
@@ -51,7 +50,7 @@ if modo == "Panel Administrador (Tú)":
                     st.session_state.logos[i]['estado'] = "En Progreso"
                     st.rerun()
             elif estado_actual == "En Progreso":
-                c1.warning("🟢 En Progreso (Luz Verde Activa)")
+                c1.warning("🟢 En Progreso (Bloqueado para el cliente)")
                 if c2.button("✓ Terminar", key=f"terminar_{i}"):
                     st.session_state.logos[i]['estado'] = "Terminado"
                     st.rerun()
@@ -85,12 +84,11 @@ def render_portal_cliente(nombre_cliente):
 
     st.divider()
 
-    # --- SECCIÓN PARA NUEVO PEDIDO / SUBIR ARCHIVO ---
+    # --- SECCIÓN PARA NUEVO PEDIDO ---
     with st.expander("➕ Enviar un Nuevo Logo a Digitalizar"):
         with st.form(key=f"form_{nombre_cliente}"):
             nombre_logo = st.text_input("Nombre del Logo / Diseño")
-            archivo_subido = st.file_uploader("Sube tu archivo (Imagen o formato de diseño)", type=["png", "jpg", "jpeg", "dst", "emb", "pdf"])
-            
+            archivo_subido = st.file_uploader("Sube tu archivo", type=["png", "jpg", "jpeg", "dst", "emb", "pdf"])
             tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"])
             
             detalle_gorra = "N/A"
@@ -116,7 +114,7 @@ def render_portal_cliente(nombre_cliente):
                         "archivo": nombre_archivo
                     }
                     st.session_state.logos.append(nuevo_logo)
-                    st.success("¡Logo enviado exitosamente a la cola de trabajo!")
+                    st.success("¡Logo enviado exitosamente!")
                     st.rerun()
                 else:
                     st.error("Por favor, ingresa un nombre para el logo.")
@@ -132,14 +130,37 @@ def render_portal_cliente(nombre_cliente):
         st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
         st.write(f"**Archivo adjunto:** `📁 {logo.get('archivo', 'N/A')}`")
         
+        # MOSTRAR ESTADO Y LUZ VERDE
         if logo['estado'] == "Pendiente":
             st.info("⏳ Estado: En espera de turno")
+            
+            # --- OPCIONES DE MODIFICAR O ELIMINAR (SOLO SI ESTÁ PENDIENTE) ---
+            col_mod, col_elim = st.columns(2)
+            
+            with col_mod:
+                with st.popover("✏️ Modificar Orden"):
+                    with st.form(key=f"edit_form_{logo['id']}"):
+                        nuevo_nombre = st.text_input("Nuevo nombre", value=logo['nombre'])
+                        nuevo_comentario = st.text_area("Nuevas notas", value=logo['comentario'])
+                        btn_guardar = st.form_submit_button("Guardar Cambios")
+                        if btn_guardar:
+                            logo['nombre'] = nuevo_nombre
+                            logo['comentario'] = nuevo_comentario
+                            st.success("¡Orden modificada con éxito!")
+                            st.rerun()
+            
+            with col_elim:
+                if st.button("🗑️ Eliminar Orden", key=f"del_{logo['id']}"):
+                    st.session_state.logos.remove(logo)
+                    st.warning("Orden eliminada.")
+                    st.rerun()
+                    
         elif logo['estado'] == "En Progreso":
-            # LA LUZ VERDE SOLICITADA
+            # LA LUZ VERDE SOLICITADA (BLOQUEA MODIFICAR/ELIMINAR)
             st.markdown(
                 """
                 <div style="background-color: #d1fae5; border-left: 6px solid #10b981; padding: 10px; border-radius: 5px; color: #065f46; font-weight: bold;">
-                    🟢 ¡TRABAJANDO EN ESTE LOGO! (En Progreso)
+                    🟢 ¡TRABAJANDO EN ESTE LOGO! (En Progreso - No se puede modificar ni eliminar)
                 </div>
                 """, 
                 unsafe_allow_html=True
@@ -153,13 +174,9 @@ def render_portal_cliente(nombre_cliente):
 
 
 # ==========================================
-# 2. VISTA CLIENTE A
+# 2. VISTAS DE CLIENTES
 # ==========================================
 if modo == "Portal Cliente A":
     render_portal_cliente("Cliente A")
-
-# ==========================================
-# 3. VISTA CLIENTE B
-# ==========================================
 elif modo == "Portal Cliente B":
     render_portal_cliente("Cliente B")
