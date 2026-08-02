@@ -18,9 +18,9 @@ if "clientes_registrados" not in st.session_state:
 # --- INICIALIZAR DATOS GLOBALES EN LA SESIÓN CON TODAS LAS LLAVES ---
 if "logos" not in st.session_state or not st.session_state.logos or "pago" not in st.session_state.logos[0]:
     st.session_state.logos = [
-        {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "pago": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "comentario": "Urgente", "archivo": "leon.png", "imagen_obj": None},
-        {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "En Revisión", "pago": "Pendiente", "tipo": "Gorra", "ubicacion_gorra": "Frontal", "detalle_gorra": "3D (Puff)", "comentario": "Centrado", "archivo": "cafe.png", "imagen_obj": None},
-        {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Terminado", "pago": "Pagado", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "comentario": "Ninguno", "archivo": "escudo.png", "imagen_obj": None},
+        {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "pago": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "posicion_logo": "Pecho Izquierdo", "comentario": "Urgente", "archivo": "leon.png", "imagen_obj": None},
+        {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "En Revisión", "pago": "Pendiente", "tipo": "Gorra", "ubicacion_gorra": "Frontal", "detalle_gorra": "3D (Puff)", "posicion_logo": "Frontal", "comentario": "Centrado", "archivo": "cafe.png", "imagen_obj": None},
+        {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Terminado", "pago": "Pagado", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "posicion_logo": "Espalda", "comentario": "Ninguno", "archivo": "escudo.png", "imagen_obj": None},
     ]
 
 # Almacén global de recibos de pago por cliente
@@ -56,7 +56,7 @@ if modo == "Panel Administrador (Tú)":
 
     st.divider()
 
-    # --- SECCIÓN PRINCIPAL: AGREGAR NUEVOS CLIENTES (¡ARRIBA PARA FÁCIL ACCESO!) ---
+    # --- SECCIÓN PRINCIPAL: AGREGAR NUEVOS CLIENTES ---
     st.subheader("➕ Registrar Nuevo Cliente y su Divisa")
     with st.form(key="form_nuevo_cliente"):
         col_nc1, col_nc2 = st.columns(2)
@@ -141,7 +141,7 @@ if modo == "Panel Administrador (Tú)":
 
             with col_info:
                 st.markdown(f"### 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*")
-                st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
+                st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Posición:** {logo.get('posicion_logo', 'No especificada')} | **Ubicación Gorra:** {logo.get('ubicacion_gorra', 'N/A')} ({logo.get('detalle_gorra', 'N/A')})")
                 st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
                 st.write(f"**Archivo cliente:** `📁 {logo.get('archivo', 'Sin archivo')}`")
                 st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
@@ -207,6 +207,7 @@ if modo == "Panel Administrador (Tú)":
             contenido_factura += f"Item #{idx}\n"
             contenido_factura += f" - Cliente: {logo.get('cliente', 'N/A')}\n"
             contenido_factura += f" - Diseño: {logo.get('nombre', 'N/A')}\n"
+            contenido_factura += f" - Posición: {logo.get('posicion_logo', 'N/A')}\n"
             contenido_factura += f" - Estado: {logo.get('estado', 'Pendiente')}\n"
             contenido_factura += f" - Pago: {logo.get('pago', 'Pendiente')}\n"
             contenido_factura += f" - Precio: ${p_usd:.2f} USD / RD${p_dop:.2f} DOP\n"
@@ -279,11 +280,17 @@ def render_portal_cliente(nombre_cliente):
             
             tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"], key=f"tipo_app_{nombre_cliente}")
             
+            posicion_logo = st.selectbox(
+                "Posición del logo en la prenda:", 
+                ["Pecho Izquierdo", "Pecho Derecho", "Centro Pecho", "Espalda Alta", "Espalda Centro", "Manga Izquierda", "Manga Derecha", "Gorra Frontal", "Gorra Lateral", "Gorra Trasera", "Otra posición"],
+                key=f"posicion_{nombre_cliente}"
+            )
+            
             ubicacion_gorra = "N/A"
             detalle_gorra = "N/A"
             
             if tipo_aplicacion == "Gorra":
-                ubicacion_gorra = st.radio("Selecciona la ubicación en la gorra:", ["Frontal", "Trasero", "Lateral"], key=f"ubicacion_{nombre_cliente}")
+                ubicacion_gorra = st.radio("Selecciona la ubicación específica en la gorra:", ["Frontal", "Trasero", "Lateral"], key=f"ubicacion_{nombre_cliente}")
                 if ubicacion_gorra == "Frontal":
                     detalle_gorra = st.radio("Selecciona el estilo:", ["3D (Puff)", "Plano (Flat)"], key=f"detalle_{nombre_cliente}")
                 else:
@@ -312,6 +319,7 @@ def render_portal_cliente(nombre_cliente):
                         "tipo": tipo_aplicacion,
                         "ubicacion_gorra": ubicacion_gorra,
                         "detalle_gorra": detalle_gorra,
+                        "posicion_logo": posicion_logo,
                         "comentario": comentario_cliente if comentario_cliente else "Ninguno",
                         "archivo": nombre_archivo,
                         "imagen_obj": img_obj
@@ -325,11 +333,20 @@ def render_portal_cliente(nombre_cliente):
 
     logos_por_realizar = [l for l in logos_cliente if l.get('estado', 'Pendiente') != "Terminado"]
     
-    st.subheader("⏳ Trabajos por Realizar")
+    st.subheader("⏳ Trabajos por Realizar y Turno en Cola")
     if not logos_por_realizar:
         st.info("No tienes trabajos pendientes actualmente.")
 
+    # --- CALCULAR COLA GLOBAL DE PRODUCCIÓN (Turnos) ---
+    cola_global_activa = [l for l in st.session_state.logos if l.get('estado', 'Pendiente') != "Terminado" and l.get('estado') != "Archivado/Pagado"]
+
     for logo in logos_por_realizar:
+        # Calcular la posición exacta en la fila global (índice 1 en adelante)
+        if logo in cola_global_activa:
+            posicion_en_cola = cola_global_activa.index(logo) + 1
+        else:
+            posicion_en_cola = "?"
+
         col_img, col_info = st.columns([1, 3])
         with col_img:
             if logo.get('imagen_obj') is not None:
@@ -339,21 +356,27 @@ def render_portal_cliente(nombre_cliente):
                 
         with col_info:
             st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
-            st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
+            # MOSTRAR LA POSICIÓN EN LA COLA DE FORMA DESTACADA
+            st.markdown(f"🎟️ **Posición en la cola de producción: #{posicion_en_cola}**")
+            st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Posición prenda:** {logo.get('posicion_logo', 'No especificada')}")
+            if logo.get('tipo') == "Gorra":
+                st.write(f"**Detalle Gorra:** {logo.get('ubicacion_gorra', 'N/A')} ({logo.get('detalle_gorra', 'N/A')})")
             st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
             st.write(f"**Archivos:** `📁 {logo.get('archivo', 'N/A')}`")
         
         estado_logo = logo.get('estado', 'Pendiente')
         if estado_logo == "Pendiente":
-            st.info("⏳ Estado: Recibido / En espera de revisión")
+            st.info(f"⏳ Estado: Recibido / Turno #{posicion_en_cola} en espera de revisión")
             col_mod, col_elim = st.columns(2)
             with col_mod:
                 with st.popover("✏️ Modificar Orden"):
                     with st.form(key=f"edit_form_{logo['id']}"):
                         nuevo_nombre = st.text_input("Nuevo nombre", value=logo.get('nombre', ''))
+                        nueva_pos = st.selectbox("Nueva posición prenda", ["Pecho Izquierdo", "Pecho Derecho", "Centro Pecho", "Espalda Alta", "Espalda Centro", "Manga Izquierda", "Manga Derecha", "Gorra Frontal", "Gorra Lateral", "Gorra Trasera", "Otra posición"], index=0)
                         nuevo_comentario = st.text_area("Nuevas notas", value=logo.get('comentario', ''))
                         if st.form_submit_button("Guardar Cambios"):
                             logo['nombre'] = nuevo_nombre
+                            logo['posicion_logo'] = nueva_pos
                             logo['comentario'] = nuevo_comentario
                             st.success("¡Modificado!")
                             st.rerun()
@@ -363,12 +386,12 @@ def render_portal_cliente(nombre_cliente):
                     st.warning("Orden eliminada.")
                     st.rerun()
         elif estado_logo == "En Revisión":
-            st.info("🔍 Estado: Verificando calidad del archivo para digitalización")
+            st.info(f"🔍 Estado: Verificando calidad (Turno #{posicion_en_cola})")
         elif estado_logo == "En Progreso":
             st.markdown(
-                """
+                f"""
                 <div style="background-color: #d1fae5; border-left: 6px solid #10b981; padding: 10px; border-radius: 5px; color: #065f46; font-weight: bold;">
-                    🟢 ¡DIGITALIZANDO EN PROGRESO! (Bloqueado para cambios)
+                    🟢 ¡DIGITALIZANDO EN PROGRESO! (Tu turno #{posicion_en_cola} se está trabajando ahora mismo - Bloqueado para cambios)
                 </div>
                 """, 
                 unsafe_allow_html=True
@@ -391,7 +414,7 @@ def render_portal_cliente(nombre_cliente):
                     
             with col_info:
                 st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
-                st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
+                st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Posición prenda:** {logo.get('posicion_logo', 'No especificada')}")
                 st.write(f"**Notas:** {logo.get('comentario', 'Ninguno')}")
             
             st.success("✅ Estado: Digitalización Finalizada")
