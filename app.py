@@ -8,14 +8,14 @@ st.set_page_config(page_title="Pixel Thread - Portal Profesional", layout="cente
 # --- ACTUALIZACIÓN AUTOMÁTICA CADA 2 SEGUNDOS ---
 st_autorefresh(interval=2000, limit=None, key="autorefresh_global")
 
-# --- INICIALIZAR LISTA DE CLIENTES Y CREDENCIALES ---
+# --- INICIALIZAR LISTA DE CLIENTES Y DIVISAS ---
 if "clientes_registrados" not in st.session_state:
     st.session_state.clientes_registrados = {
-        "Cliente A": {"divisa": "Dólares (USD - $)", "password": "123"},
-        "Cliente B": {"divisa": "Pesos Dominicanos (DOP - RD$)", "password": "123"}
+        "Cliente A": "Dólares (USD - $)",
+        "Cliente B": "Pesos Dominicanos (DOP - RD$)"
     }
 
-# --- CONTROL DE SESIÓN DE CLIENTE LOGUEADO ---
+# --- CONTROL DE SESIÓN DE CLIENTE (SOLO POR USUARIO) ---
 if "cliente_logeado" not in st.session_state:
     st.session_state.cliente_logeado = None
 
@@ -35,7 +35,7 @@ if "form_enviado" not in st.session_state:
 
 # --- MENÚ DE NAVEGACIÓN RÁPIDA ---
 st.sidebar.title("Pixel Thread 🧵")
-modo = st.sidebar.radio("Selecciona el Modo:", ["Panel Administrador (Tú)", "Portal de Clientes (Acceso Seguro)"])
+modo = st.sidebar.radio("Selecciona el Modo:", ["Panel Administrador (Tú)", "Portal de Clientes"])
 
 st.sidebar.divider()
 st.sidebar.info("💡 Tarifa oficial: $5.00 USD / $300.00 DOP por logo digitalizado.")
@@ -57,31 +57,26 @@ if modo == "Panel Administrador (Tú)":
 
     st.divider()
 
-    # --- SECCIÓN PRINCIPAL: AGREGAR NUEVOS CLIENTES Y CONTRASEÑA ---
-    st.subheader("➕ Registrar Nuevo Cliente, Divisa y Contraseña")
+    # --- SECCIÓN PRINCIPAL: AGREGAR NUEVOS CLIENTES (SIN CONTRASEÑA) ---
+    st.subheader("➕ Registrar Nuevo Cliente y su Moneda")
     with st.form(key="form_nuevo_cliente"):
-        col_nc1, col_nc2, col_nc3 = st.columns(3)
+        col_nc1, col_nc2 = st.columns(2)
         with col_nc1:
             nuevo_nombre_cli = st.text_input("Nombre de Usuario / Cliente")
         with col_nc2:
-            nuevo_pass_cli = st.text_input("Contraseña de Acceso", type="password")
-        with col_nc3:
-            nueva_divisa_cli = st.selectbox("Moneda", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"])
+            nueva_divisa_cli = st.selectbox("Moneda Principal", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"])
         
-        btn_crear_cli = st.form_submit_button("Registrar Cliente Seguro")
+        btn_crear_cli = st.form_submit_button("Registrar Cliente")
         if btn_crear_cli:
-            if nuevo_nombre_cli and nuevo_pass_cli:
+            if nuevo_nombre_cli:
                 if nuevo_nombre_cli in st.session_state.clientes_registrados:
                     st.error("¡Este usuario ya está registrado!")
                 else:
-                    st.session_state.clientes_registrados[nuevo_nombre_cli] = {
-                        "divisa": nueva_divisa_cli,
-                        "password": nuevo_pass_cli
-                    }
-                    st.success(f"¡Cliente '{nuevo_nombre_cli}' creado con éxito con su contraseña!")
+                    st.session_state.clientes_registrados[nuevo_nombre_cli] = nueva_divisa_cli
+                    st.success(f"¡Cliente '{nuevo_nombre_cli}' registrado con éxito!")
                     st.rerun()
             else:
-                st.error("Por favor, completa el nombre de usuario y la contraseña.")
+                st.error("Por favor, ingresa un nombre para el cliente.")
 
     st.divider()
 
@@ -96,7 +91,6 @@ if modo == "Panel Administrador (Tú)":
             c_info, c_btn = st.columns([2, 1])
             with c_info:
                 st.write(f"Trabajos terminados pendientes de cerrar ciclo: **{len(logos_cli_term)}**")
-                st.write(f"Contraseña actual: `{st.session_state.clientes_registrados[cli]['password']}`")
             with c_btn:
                 if st.button(f"🔄 Reiniciar Ciclo de {cli}", key=f"reset_cli_{cli}"):
                     for logo in st.session_state.logos:
@@ -193,29 +187,23 @@ if modo == "Panel Administrador (Tú)":
 
 
 # ==========================================
-# 2. PORTAL DE CLIENTES CON LOGIN SEGURO
+# 2. PORTAL DE CLIENTES (ACCESO SOLO CON USUARIO)
 # ==========================================
-elif modo == "Portal de Clientes (Acceso Seguro)":
+elif modo == "Portal de Clientes":
     
     if st.session_state.cliente_logeado is None:
-        st.title("🔐 Acceso al Portal de Clientes - Pixel Thread")
-        st.write("Por favor, introduce tu usuario y contraseña asignados para acceder únicamente a tus pedidos.")
+        st.title("👤 Portal de Clientes - Pixel Thread")
+        st.write("Selecciona tu nombre de usuario para acceder a tus pedidos y diseños:")
         
         with st.form(key="form_login_cliente"):
-            usuario_input = st.text_input("Usuario / Nombre de Cliente")
-            password_input = st.text_input("Contraseña", type="password")
-            btn_login = st.form_submit_button("Iniciar Sesión")
+            lista_clientes_disponibles = list(st.session_state.clientes_registrados.keys())
+            usuario_seleccionado = st.selectbox("Selecciona tu Usuario", lista_clientes_disponibles)
+            btn_entrar = st.form_submit_button("Entrar a mi Portal")
             
-            if btn_login:
-                if usuario_input in st.session_state.clientes_registrados:
-                    if st.session_state.clientes_registrados[usuario_input]["password"] == password_input:
-                        st.session_state.cliente_logeado = usuario_input
-                        st.success(f"¡Bienvenido, {usuario_input}!")
-                        st.rerun()
-                    else:
-                        st.error("Contraseña incorrecta.")
-                else:
-                    st.error("El usuario ingresado no existe o no está registrado.")
+            if btn_entrar:
+                st.session_state.cliente_logeado = usuario_seleccionado
+                st.success(f"¡Bienvenido, {usuario_seleccionado}!")
+                st.rerun()
     
     else:
         nombre_cliente = st.session_state.cliente_logeado
@@ -225,14 +213,13 @@ elif modo == "Portal de Clientes (Acceso Seguro)":
             st.title(f"👤 Portal Privado de: {nombre_cliente}")
         with col_logout:
             st.write("")
-            if st.button("🚪 Cerrar Sesión"):
+            if st.button("🚪 Cambiar de Usuario"):
                 st.session_state.cliente_logeado = None
                 st.rerun()
 
         st.write("Gestiona tus solicitudes de bordado y descarga tus archivos finalizados de manera segura.")
         
-        info_cliente = st.session_state.clientes_registrados.get(nombre_cliente, {"divisa": "Dólares (USD - $)"})
-        divisa_default = info_cliente.get("divisa", "Dólares (USD - $)")
+        divisa_default = st.session_state.clientes_registrados.get(nombre_cliente, "Dólares (USD - $)")
         divisa = st.radio("Selecciona tu moneda:", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"], index=0 if "Dólares" in divisa_default else 1, horizontal=True, key=f"divisa_{nombre_cliente}")
         
         logos_cliente = [l for l in st.session_state.logos if l.get('cliente') == nombre_cliente and l.get('estado') != "Archivado/Pagado"]
