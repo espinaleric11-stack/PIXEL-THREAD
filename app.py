@@ -15,6 +15,10 @@ if "logos" not in st.session_state or "imagen_obj" not in st.session_state.logos
         {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "comentario": "Ninguno", "archivo": "escudo.png", "imagen_obj": None},
     ]
 
+# Control de estado para ocultar el formulario tras enviar
+if "form_enviado" not in st.session_state:
+    st.session_state.form_enviado = False
+
 # --- MENÚ DE NAVEGACIÓN RÁPIDA (Simulador de vistas) ---
 st.sidebar.title("Pixel Thread 🧵")
 modo = st.sidebar.radio("Selecciona la Vista:", ["Panel Administrador (Tú)", "Portal Cliente A", "Portal Cliente B"])
@@ -28,7 +32,7 @@ st.sidebar.caption("🔄 Actualización automática activa (cada 2 seg)")
 # ==========================================
 if modo == "Panel Administrador (Tú)":
     st.title("🎛️ Panel de Control - Pixel Thread")
-    st.write("Gestiona el estado de los logos. Al marcar un logo como **En Progreso**, se encenderá la luz verde y se bloquearán las opciones para el cliente.")
+    st.write("Gestiona el estado de los logos. Los pendientes y en progreso aparecen arriba, y los terminados se mandan abajo del todo.")
 
     total_usd = sum(l.get('precio_usd', 5.0) for l in st.session_state.logos if l['estado'] == "Terminado")
     total_dop = sum(l.get('precio_dop', 300.0) for l in st.session_state.logos if l['estado'] == "Terminado")
@@ -38,9 +42,19 @@ if modo == "Panel Administrador (Tú)":
     col2.metric("Total Facturable (DOP)", f"RD$ {total_dop:,.2f}")
 
     st.divider()
-    st.subheader("Lista de Todos los Trabajos")
 
-    for i, logo in enumerate(st.session_state.logos):
+    # --- SEPARAR LISTAS: POR HACER (ARRIBA) VS TERMINADOS (ABAJO) ---
+    logos_por_hacer = [l for l in st.session_state.logos if l['estado'] != "Terminado"]
+    logos_terminados = [l for l in st.session_state.logos if l['estado'] == "Terminado"]
+    
+    logos_ordenados_admin = logos_por_hacer + logos_terminados
+
+    st.subheader("📋 Lista de Trabajos")
+
+    for logo in logos_ordenados_admin:
+        # Encontramos el índice real en la lista global para modificarlo correctamente
+        i = st.session_state.logos.index(logo)
+        
         with st.container():
             col_img, col_info = st.columns([1, 3])
             
@@ -61,16 +75,16 @@ if modo == "Panel Administrador (Tú)":
             
             c1, c2 = st.columns(2)
             if estado_actual == "Pendiente":
-                if c1.button("▶ Iniciar (Luz Verde)", key=f"iniciar_{i}"):
+                if c1.button("▶ Iniciar (Luz Verde)", key=f"iniciar_{logo['id']}"):
                     st.session_state.logos[i]['estado'] = "En Progreso"
                     st.rerun()
             elif estado_actual == "En Progreso":
                 c1.warning("🟢 En Progreso (Bloqueado para el cliente)")
-                if c2.button("✓ Terminar", key=f"terminar_{i}"):
+                if c2.button("✓ Terminar", key=f"terminar_{logo['id']}"):
                     st.session_state.logos[i]['estado'] = "Terminado"
                     st.rerun()
             else:
-                c1.success("✅ Completado / Agregado a factura")
+                c1.success("✅ Completado / Agregado a factura (Ubicado abajo)")
 
             st.divider()
 
@@ -99,58 +113,62 @@ def render_portal_cliente(nombre_cliente):
 
     st.divider()
 
-    # --- SECCIÓN PARA NUEVO PEDIDO DINÁMICO ---
-    with st.expander("➕ Enviar un Nuevo Logo a Digitalizar"):
-        nombre_logo = st.text_input("Nombre del Logo / Diseño", key=f"inp_nom_{nombre_cliente}")
-        archivo_subido = st.file_uploader("Sube tu archivo de imagen (PNG, JPG)", type=["png", "jpg", "jpeg"], key=f"inp_file_{nombre_cliente}")
-        
-        tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"], key=f"tipo_app_{nombre_cliente}")
-        
-        ubicacion_gorra = "N/A"
-        detalle_gorra = "N/A"
-        
-        # Si selecciona Gorra, mostrar dinámicamente la ubicación
-        if tipo_aplicacion == "Gorra":
-            ubicacion_gorra = st.radio("Selecciona la ubicación en la gorra:", ["Frontal", "Trasero", "Lateral"], key=f"ubicacion_{nombre_cliente}")
-            
-            # Si selecciona Frontal, mostrar dinámicamente el estilo 3D o Plano
-            if ubicacion_gorra == "Frontal":
-                detalle_gorra = st.radio("Selecciona el estilo:", ["3D (Puff)", "Plano (Flat)"], key=f"detalle_{nombre_cliente}")
-            else:
-                detalle_gorra = "Plano (Flat)"
-        
-        comentario_cliente = st.text_area("Comentarios o instrucciones adicionales (opcional)", key=f"inp_com_{nombre_cliente}")
-        
-        if st.button("Enviar Logo a Pixel Thread", key=f"btn_enviar_{nombre_cliente}"):
-            if nombre_logo:
-                nombre_archivo = archivo_subido.name if archivo_subido else "Sin archivo adjunto"
-                
-                img_obj = None
-                if archivo_subido is not None:
-                    try:
-                        img_obj = Image.open(archivo_subido)
-                    except Exception:
-                        pass
-
-                nuevo_logo = {
-                    "id": len(st.session_state.logos) + 1,
-                    "cliente": nombre_cliente,
-                    "nombre": nombre_logo,
-                    "precio_usd": 5.0,
-                    "precio_dop": 300.0,
-                    "estado": "Pendiente",
-                    "tipo": tipo_aplicacion,
-                    "ubicacion_gorra": ubicacion_gorra,
-                    "detalle_gorra": detalle_gorra,
-                    "comentario": comentario_cliente if comentario_cliente else "Ninguno",
-                    "archivo": nombre_archivo,
-                    "imagen_obj": img_obj
-                }
-                st.session_state.logos.append(nuevo_logo)
-                st.success("¡Logo enviado exitosamente!")
+    # --- SECCIÓN PARA NUEVO PEDIDO ---
+    with st.expander("➕ Enviar un Nuevo Logo a Digitalizar", expanded=not st.session_state.form_enviado):
+        if st.session_state.form_enviado:
+            st.success("✅ ¡ORDEN AGREGADA!")
+            if st.button("Enviar otro diseño", key=f"otro_{nombre_cliente}"):
+                st.session_state.form_enviado = False
                 st.rerun()
-            else:
-                st.error("Por favor, ingresa un nombre para el logo.")
+        else:
+            nombre_logo = st.text_input("Nombre del Logo / Diseño", key=f"inp_nom_{nombre_cliente}")
+            archivo_subido = st.file_uploader("Sube tu archivo de imagen (PNG, JPG)", type=["png", "jpg", "jpeg"], key=f"inp_file_{nombre_cliente}")
+            
+            tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"], key=f"tipo_app_{nombre_cliente}")
+            
+            ubicacion_gorra = "N/A"
+            detalle_gorra = "N/A"
+            
+            if tipo_aplicacion == "Gorra":
+                ubicacion_gorra = st.radio("Selecciona la ubicación en la gorra:", ["Frontal", "Trasero", "Lateral"], key=f"ubicacion_{nombre_cliente}")
+                
+                if ubicacion_gorra == "Frontal":
+                    detalle_gorra = st.radio("Selecciona el estilo:", ["3D (Puff)", "Plano (Flat)"], key=f"detalle_{nombre_cliente}")
+                else:
+                    detalle_gorra = "Plano (Flat)"
+            
+            comentario_cliente = st.text_area("Comentarios o instrucciones adicionales (opcional)", key=f"inp_com_{nombre_cliente}")
+            
+            if st.button("Enviar Logo a Pixel Thread", key=f"btn_enviar_{nombre_cliente}"):
+                if nombre_logo:
+                    nombre_archivo = archivo_subido.name if archivo_subido else "Sin archivo adjunto"
+                    
+                    img_obj = None
+                    if archivo_subido is not None:
+                        try:
+                            img_obj = Image.open(archivo_subido)
+                        except Exception:
+                            pass
+
+                    nuevo_logo = {
+                        "id": len(st.session_state.logos) + 1,
+                        "cliente": nombre_cliente,
+                        "nombre": nombre_logo,
+                        "precio_usd": 5.0,
+                        "precio_dop": 300.0,
+                        "estado": "Pendiente",
+                        "tipo": tipo_aplicacion,
+                        "ubicacion_gorra": ubicacion_gorra,
+                        "detalle_gorra": detalle_gorra,
+                        "comentario": comentario_cliente if comentario_cliente else "Ninguno",
+                        "archivo": nombre_archivo,
+                        "imagen_obj": img_obj
+                    }
+                    st.session_state.logos.append(nuevo_logo)
+                    st.session_state.form_enviado = True
+                    st.rerun()
+                else:
+                    st.error("Por favor, ingresa un nombre para el logo.")
 
     st.subheader("📋 Tus Trabajos Activos e Historial")
 
