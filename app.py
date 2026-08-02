@@ -2,12 +2,8 @@ import streamlit as st
 
 st.set_page_config(page_title="Pixel Thread - Portal de Clientes", layout="centered")
 
-# --- TASA DE CAMBIO FIJA ---
-# 1 USD = 60 DOP (puedes ajustarla si lo deseas)
-TASA_CAMBIO = 60.0
-
-# --- INICIALIZAR DATOS GLOBALES EN LA SESIÓN ---
-if "logos" not in st.session_state:
+# --- INICIALIZAR DATOS GLOBALES EN LA SESIÓN (CON REINICIO AUTOMÁTICO SI CAMBIA LA ESTRUCTURA) ---
+if "logos" not in st.session_state or "precio_usd" not in st.session_state.logos[0]:
     st.session_state.logos = [
         {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente"},
         {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente"},
@@ -28,10 +24,9 @@ if modo == "Panel Administrador (Tú)":
     st.title("🎛️ Panel de Control - Pixel Thread")
     st.write("Gestiona el estado de los logos. Al marcar un logo como **En Progreso**, se encenderá la luz verde en el portal de tu cliente.")
 
-    # Calcular acumulados generales de la semana
-    total_usd = sum(l['precio_usd'] for l in st.session_state.logos if l['estado'] == "Terminado")
-    total_dop = sum(l['precio_dop'] for l in st.session_state.logos if l['estado'] == "Terminado")
-    terminados_count = sum(1 for l in st.session_state.logos if l['estado'] == "Terminado")
+    # Calcular acumulados generales de la semana de forma segura
+    total_usd = sum(l.get('precio_usd', 5.0) for l in st.session_state.logos if l['estado'] == "Terminado")
+    total_dop = sum(l.get('precio_dop', 300.0) for l in st.session_state.logos if l['estado'] == "Terminado")
     
     col1, col2 = st.columns(2)
     col1.metric("Total Facturable (USD)", f"${total_usd:.2f} USD")
@@ -44,7 +39,7 @@ if modo == "Panel Administrador (Tú)":
         with st.container():
             c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
             c1.write(f"**{logo['nombre']}** \n\n *Cliente: {logo['cliente']}*")
-            c2.write(f"Precio: ${logo['precio_usd']:.2f} USD / RD${logo['precio_dop']:.2f}")
+            c2.write(f"Precio: ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
             
             estado_actual = logo['estado']
             
@@ -74,16 +69,15 @@ elif modo == "Portal Cliente A":
     st.title("👤 Portal de Cliente: Cliente A")
     st.write("Bienvenido a Pixel Thread. Consulta el estado de tus digitalizaciones en tiempo real.")
     
-    # SELECTOR DE DIVISA PARA EL CLIENTE
     divisa = st.radio("Selecciona tu moneda de preferencia:", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"], horizontal=True)
     
     logos_cliente = [l for l in st.session_state.logos if l['cliente'] == "Cliente A"]
     
     if "Dólares" in divisa:
-        total_cliente = sum(l['precio_usd'] for l in logos_cliente if l['estado'] == "Terminado")
+        total_cliente = sum(l.get('precio_usd', 5.0) for l in logos_cliente if l['estado'] == "Terminado")
         st.metric("Tu Acumulado Actual (Semana)", f"${total_cliente:.2f} USD")
     else:
-        total_cliente = sum(l['precio_dop'] for l in logos_cliente if l['estado'] == "Terminado")
+        total_cliente = sum(l.get('precio_dop', 300.0) for l in logos_cliente if l['estado'] == "Terminado")
         st.metric("Tu Acumulado Actual (Semana)", f"RD$ {total_cliente:,.2f}")
 
     st.divider()
@@ -94,7 +88,6 @@ elif modo == "Portal Cliente A":
         if logo['estado'] == "Pendiente":
             st.info("⏳ Estado: En espera de turno")
         elif logo['estado'] == "En Progreso":
-            # LA LUZ VERDE SOLICITADA
             st.markdown(
                 """
                 <div style="background-color: #d1fae5; border-left: 6px solid #10b981; padding: 10px; border-radius: 5px; color: #065f46; font-weight: bold;">
@@ -106,7 +99,7 @@ elif modo == "Portal Cliente A":
         else:
             st.success("✅ Estado: Logo Terminado / Agregado a la factura")
         
-        precio_mostrar = f"${logo['precio_usd']:.2f} USD" if "Dólares" in divisa else f"RD$ {logo['precio_dop']:,.2f} DOP"
+        precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
         st.write(f"Precio unitario: **{precio_mostrar}**")
         st.divider()
 
@@ -118,16 +111,15 @@ elif modo == "Portal Cliente B":
     st.title("👤 Portal de Cliente: Cliente B")
     st.write("Bienvenido a Pixel Thread. Consulta el estado de tus digitalizaciones en tiempo real.")
     
-    # SELECTOR DE DIVISA PARA EL CLIENTE
     divisa = st.radio("Selecciona tu moneda de preferencia:", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"], horizontal=True, key="divisa_b")
     
     logos_cliente = [l for l in st.session_state.logos if l['cliente'] == "Cliente B"]
     
     if "Dólares" in divisa:
-        total_cliente = sum(l['precio_usd'] for l in logos_cliente if l['estado'] == "Terminado")
+        total_cliente = sum(l.get('precio_usd', 5.0) for l in logos_cliente if l['estado'] == "Terminado")
         st.metric("Tu Acumulado Actual (Semana)", f"${total_cliente:.2f} USD")
     else:
-        total_cliente = sum(l['precio_dop'] for l in logos_cliente if l['estado'] == "Terminado")
+        total_cliente = sum(l.get('precio_dop', 300.0) for l in logos_cliente if l['estado'] == "Terminado")
         st.metric("Tu Acumulado Actual (Semana)", f"RD$ {total_cliente:,.2f}")
 
     st.divider()
@@ -149,6 +141,6 @@ elif modo == "Portal Cliente B":
         else:
             st.success("✅ Estado: Logo Terminado / Agregado a la factura")
             
-        precio_mostrar = f"${logo['precio_usd']:.2f} USD" if "Dólares" in divisa else f"RD$ {logo['precio_dop']:,.2f} DOP"
+        precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
         st.write(f"Precio unitario: **{precio_mostrar}**")
         st.divider()
