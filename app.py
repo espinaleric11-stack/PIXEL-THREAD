@@ -99,58 +99,58 @@ def render_portal_cliente(nombre_cliente):
 
     st.divider()
 
-    # --- SECCIÓN PARA NUEVO PEDIDO ---
+    # --- SECCIÓN PARA NUEVO PEDIDO DINÁMICO ---
     with st.expander("➕ Enviar un Nuevo Logo a Digitalizar"):
-        with st.form(key=f"form_{nombre_cliente}"):
-            nombre_logo = st.text_input("Nombre del Logo / Diseño")
-            archivo_subido = st.file_uploader("Sube tu archivo de imagen (PNG, JPG)", type=["png", "jpg", "jpeg"])
+        nombre_logo = st.text_input("Nombre del Logo / Diseño", key=f"inp_nom_{nombre_cliente}")
+        archivo_subido = st.file_uploader("Sube tu archivo de imagen (PNG, JPG)", type=["png", "jpg", "jpeg"], key=f"inp_file_{nombre_cliente}")
+        
+        tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"], key=f"tipo_app_{nombre_cliente}")
+        
+        ubicacion_gorra = "N/A"
+        detalle_gorra = "N/A"
+        
+        # Si selecciona Gorra, mostrar dinámicamente la ubicación
+        if tipo_aplicacion == "Gorra":
+            ubicacion_gorra = st.radio("Selecciona la ubicación en la gorra:", ["Frontal", "Trasero", "Lateral"], key=f"ubicacion_{nombre_cliente}")
             
-            tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"], key=f"tipo_app_{nombre_cliente}")
-            
-            ubicacion_gorra = "N/A"
-            detalle_gorra = "N/A"
-            
-            if tipo_aplicacion == "Gorra":
-                ubicacion_gorra = st.radio("Selecciona la ubicación en la gorra:", ["Frontal", "Trasero", "Lateral"], key=f"ubicacion_{nombre_cliente}")
+            # Si selecciona Frontal, mostrar dinámicamente el estilo 3D o Plano
+            if ubicacion_gorra == "Frontal":
+                detalle_gorra = st.radio("Selecciona el estilo:", ["3D (Puff)", "Plano (Flat)"], key=f"detalle_{nombre_cliente}")
+            else:
+                detalle_gorra = "Plano (Flat)"
+        
+        comentario_cliente = st.text_area("Comentarios o instrucciones adicionales (opcional)", key=f"inp_com_{nombre_cliente}")
+        
+        if st.button("Enviar Logo a Pixel Thread", key=f"btn_enviar_{nombre_cliente}"):
+            if nombre_logo:
+                nombre_archivo = archivo_subido.name if archivo_subido else "Sin archivo adjunto"
                 
-                if ubicacion_gorra == "Frontal":
-                    detalle_gorra = st.radio("Selecciona el estilo:", ["3D (Puff)", "Plano (Flat)"], key=f"detalle_{nombre_cliente}")
-                else:
-                    detalle_gorra = "Plano (Flat)"
-            
-            comentario_cliente = st.text_area("Comentarios o instrucciones adicionales (opcional)")
-            
-            submitted = st.form_submit_button("Enviar Logo a Pixel Thread")
-            if submitted:
-                if nombre_logo:
-                    nombre_archivo = archivo_subido.name if archivo_subido else "Sin archivo adjunto"
-                    
-                    img_obj = None
-                    if archivo_subido is not None:
-                        try:
-                            img_obj = Image.open(archivo_subido)
-                        except Exception:
-                            pass
+                img_obj = None
+                if archivo_subido is not None:
+                    try:
+                        img_obj = Image.open(archivo_subido)
+                    except Exception:
+                        pass
 
-                    nuevo_logo = {
-                        "id": len(st.session_state.logos) + 1,
-                        "cliente": nombre_cliente,
-                        "nombre": nombre_logo,
-                        "precio_usd": 5.0,
-                        "precio_dop": 300.0,
-                        "estado": "Pendiente",
-                        "tipo": tipo_aplicacion,
-                        "ubicacion_gorra": ubicacion_gorra,
-                        "detalle_gorra": detalle_gorra,
-                        "comentario": comentario_cliente if comentario_cliente else "Ninguno",
-                        "archivo": nombre_archivo,
-                        "imagen_obj": img_obj
-                    }
-                    st.session_state.logos.append(nuevo_logo)
-                    st.success("¡Logo enviado exitosamente!")
-                    st.rerun()
-                else:
-                    st.error("Por favor, ingresa un nombre para el logo.")
+                nuevo_logo = {
+                    "id": len(st.session_state.logos) + 1,
+                    "cliente": nombre_cliente,
+                    "nombre": nombre_logo,
+                    "precio_usd": 5.0,
+                    "precio_dop": 300.0,
+                    "estado": "Pendiente",
+                    "tipo": tipo_aplicacion,
+                    "ubicacion_gorra": ubicacion_gorra,
+                    "detalle_gorra": detalle_gorra,
+                    "comentario": comentario_cliente if comentario_cliente else "Ninguno",
+                    "archivo": nombre_archivo,
+                    "imagen_obj": img_obj
+                }
+                st.session_state.logos.append(nuevo_logo)
+                st.success("¡Logo enviado exitosamente!")
+                st.rerun()
+            else:
+                st.error("Por favor, ingresa un nombre para el logo.")
 
     st.subheader("📋 Tus Trabajos Activos e Historial")
 
