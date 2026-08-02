@@ -57,7 +57,7 @@ if modo == "Panel Administrador (Tú)":
 
     st.divider()
 
-    # --- SECCIÓN PRINCIPAL: AGREGAR NUEVOS CLIENTES (SIN CONTRASEÑA) ---
+    # --- SECCIÓN PRINCIPAL: AGREGAR NUEVOS CLIENTES ---
     st.subheader("➕ Registrar Nuevo Cliente y su Moneda")
     with st.form(key="form_nuevo_cliente"):
         col_nc1, col_nc2 = st.columns(2)
@@ -187,23 +187,30 @@ if modo == "Panel Administrador (Tú)":
 
 
 # ==========================================
-# 2. PORTAL DE CLIENTES (ACCESO SOLO CON USUARIO)
+# 2. PORTAL DE CLIENTES (ACCESO SOLO CON SU USUARIO ESCRITO)
 # ==========================================
 elif modo == "Portal de Clientes":
     
     if st.session_state.cliente_logeado is None:
         st.title("👤 Portal de Clientes - Pixel Thread")
-        st.write("Selecciona tu nombre de usuario para acceder a tus pedidos y diseños:")
+        st.write("Ingresa tu nombre de usuario para acceder a tus pedidos y diseños:")
         
         with st.form(key="form_login_cliente"):
-            lista_clientes_disponibles = list(st.session_state.clientes_registrados.keys())
-            usuario_seleccionado = st.selectbox("Selecciona tu Usuario", lista_clientes_disponibles)
+            usuario_ingresado = st.text_input("Tu Nombre de Usuario / Cliente")
             btn_entrar = st.form_submit_button("Entrar a mi Portal")
             
             if btn_entrar:
-                st.session_state.cliente_logeado = usuario_seleccionado
-                st.success(f"¡Bienvenido, {usuario_seleccionado}!")
-                st.rerun()
+                usuario_limpio = usuario_ingresado.strip()
+                if usuario_limpio:
+                    # Si el usuario no existe todavía, lo guardamos automáticamente
+                    if usuario_limpio not in st.session_state.clientes_registrados:
+                        st.session_state.clientes_registrados[usuario_limpio] = "Dólares (USD - $)"
+                    
+                    st.session_state.cliente_logeado = usuario_limpio
+                    st.success(f"¡Bienvenido, {usuario_limpio}!")
+                    st.rerun()
+                else:
+                    st.error("Por favor, introduce un nombre de usuario válido.")
     
     else:
         nombre_cliente = st.session_state.cliente_logeado
