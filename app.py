@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image
 from streamlit_autorefresh import st_autorefresh
+from datetime import datetime
 
 st.set_page_config(page_title="Pixel Thread - Portal Profesional", layout="centered")
 
@@ -14,6 +15,10 @@ if "logos" not in st.session_state or not st.session_state.logos or "pago" not i
         {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "En Revisión", "pago": "Pendiente", "tipo": "Gorra", "ubicacion_gorra": "Frontal", "detalle_gorra": "3D (Puff)", "comentario": "Centrado", "archivo": "cafe.png", "imagen_obj": None},
         {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Terminado", "pago": "Pagado", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "comentario": "Ninguno", "archivo": "escudo.png", "imagen_obj": None},
     ]
+
+# Almacén global de recibos de pago por cliente
+if "recibos_pago" not in st.session_state:
+    st.session_state.recibos_pago = {}
 
 # Control de estado para el formulario
 if "form_enviado" not in st.session_state:
@@ -43,9 +48,26 @@ if modo == "Panel Administrador (Tú)":
 
     st.divider()
 
+    # --- SECCIÓN DE RECIBOS DE PAGO ENVIADOS POR CLIENTES ---
+    st.subheader("🧾 Recibos de Pago Subidos por Clientes")
+    if st.session_state.recibos_pago:
+        for cli, recibo_info in st.session_state.recibos_pago.items():
+            with st.expander(f"📥 Ver Recibo de Pago de: {cli} ({recibo_info['nombre_archivo']})"):
+                st.download_button(
+                    label=f"Descargar comprobante de {cli}",
+                    data=recibo_info['bytes'],
+                    file_name=recibo_info['nombre_archivo'],
+                    mime="application/octet-stream",
+                    key=f"dl_recibo_{cli}"
+                )
+    else:
+        st.info("No hay recibos de pago subidos por los clientes todavía.")
+
+    st.divider()
+
     # Organizar listas: Pendientes/En revisión/En progreso arriba, terminados abajo
     logos_por_hacer = [l for l in st.session_state.logos if l.get('estado', 'Pendiente') != "Terminado"]
-    logos_terminados = [l for l in st.session_state.logos if l.get('estado', 'Pendiente') == "Terminado"]
+    logos_terminados = [l for l in st.session_state.logos if l.get('estado', 'Pendiente'] == "Terminado")
     logos_ordenados_admin = logos_por_hacer + logos_terminados
 
     st.subheader("📋 Gestión de Trabajos")
@@ -97,7 +119,6 @@ if modo == "Panel Administrador (Tú)":
                     st.rerun()
 
             with st.expander("📤 Subir múltiples archivos de bordado (.DST / .EMB / .PDF)"):
-                # Permitir múltiples archivos a la vez
                 archivos_bordado = st.file_uploader(
                     "Sube los archivos listos para bordar", 
                     type=["dst", "emb", "pes", "jef", "pdf"], 
@@ -105,19 +126,57 @@ if modo == "Panel Administrador (Tú)":
                     key=f"bordado_{logo['id']}"
                 )
                 if archivos_bordado:
-                    # Guardamos una lista con los bytes y nombres de cada archivo subido
                     logo['archivos_multiples'] = [{"nombre": f.name, "bytes": f.getvalue()} for f in archivos_bordado]
                     nombres_str = ", ".join([f.name for f in archivos_bordado])
                     st.success(f"Archivos guardados correctamente: {nombres_str}")
 
             st.divider()
 
-    if st.button("📄 Generar Corte Semanal"):
-        st.success("¡Corte y reporte contable generado con éxito!")
+    st.subheader("📄 Generación de Factura / Corte Semanal")
+    if st.button("Generar Corte Semanal"):
+        # Construir contenido de la factura general
+        fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        contenido_factura = f"=========================================\n"
+        contenido_factura += f"          PIXEL THREAD - FACTURA         \n"
+        contenido_factura += f"            CORTE SEMANAL GENERAL        \n"
+        contenido_factura += f"=========================================\n"
+        contenido_factura += f"Fecha de emisión: {fecha_actual}\n\n"
+        
+        total_gen_usd = 0.0
+        total_gen_dop = 0.0
+        
+        for idx, logo in enumerate(st.session_state.logos, 1):
+            p_usd = logo.get('precio_usd', 5.0)
+            p_dop = logo.get('precio_dop', 300.0)
+            total_gen_usd += p_usd
+            total_gen_dop += p_dop
+            
+            contenido_factura += f"Item #{idx}\n"
+            contenido_factura += f" - Cliente: {logo.get('cliente', 'N/A')}\n"
+            contenido_factura += f" - Diseño: {logo.get('nombre', 'N/A')}\n"
+            contenido_factura += f" - Estado: {logo.get('estado', 'Pendiente')}\n"
+            contenido_factura += f" - Pago: {logo.get('pago', 'Pendiente')}\n"
+            contenido_factura += f" - Precio: ${p_usd:.2f} USD / RD${p_dop:.2f} DOP\n"
+            contenido_factura += f"-----------------------------------------\n"
+            
+        contenido_factura += f"\nTOTAL GENERAL ACUMULADO:\n"
+        contenido_factura += f"USD: ${total_gen_usd:.2f}\n"
+        contenido_factura += f"DOP: RD$ {total_gen_dop:,.2f}\n"
+        contenido_factura += f"=========================================\n"
+        
+        st.success("¡Corte y factura generados con éxito!")
+        
+        # Botón para descargar la factura generada
+        st.download_button(
+            label="⬇️ Descargar Factura / Corte en TXT",
+            data=contenido_factura,
+            file_name=f"factura_corte_semanal_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+            mime="text/plain"
+        )
 
 
 # ==========================================
-# FUNCIÓN GENÉRICA PARA EL PORTAL DE CLIENTES
+# 2. VISTAS DE CLIENTES
 # ==========================================
 def render_portal_cliente(nombre_cliente):
     st.title(f"👤 Portal de Cliente: {nombre_cliente}")
@@ -127,12 +186,25 @@ def render_portal_cliente(nombre_cliente):
     
     logos_cliente = [l for l in st.session_state.logos if l.get('cliente') == nombre_cliente]
     
-    if "Dólares" in divisa:
-        total_cliente = sum(l.get('precio_usd', 5.0) for l in logos_cliente if l.get('pago', 'Pendiente') == "Pagado")
-        st.metric("Total Pagado (Semana)", f"${total_cliente:.2f} USD")
-    else:
-        total_cliente = sum(l.get('precio_dop', 300.0) for l in logos_cliente if l.get('pago', 'Pendiente') == "Pagado")
-        st.metric("Total Pagado (Semana)", f"RD$ {total_cliente:,.2f}")
+    col_metrica, col_recibo = st.columns(2)
+
+    with col_metrica:
+        if "Dólares" in divisa:
+            total_cliente = sum(l.get('precio_usd', 5.0) for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado")
+            st.metric("Total Acumulado (Semana)", f"${total_cliente:.2f} USD")
+        else:
+            total_cliente = sum(l.get('precio_dop', 300.0) for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado")
+            st.metric("Total Acumulado (Semana)", f"RD$ {total_cliente:,.2f}")
+
+    with col_recibo:
+        st.write("🧾 **Subir Recibo de Pago**")
+        recibo_subido = st.file_uploader("Sube tu comprobante", type=["png", "jpg", "jpeg", "pdf"], key=f"recibo_file_{nombre_cliente}")
+        if recibo_subido:
+            st.session_state.recibos_pago[nombre_cliente] = {
+                "nombre_archivo": recibo_subido.name,
+                "bytes": recibo_subido.getvalue()
+            }
+            st.success("¡Recibo enviado al administrador con éxito!")
 
     st.divider()
 
@@ -146,7 +218,6 @@ def render_portal_cliente(nombre_cliente):
         else:
             nombre_logo = st.text_input("Nombre del Logo / Diseño", key=f"inp_nom_{nombre_cliente}")
             
-            # Permitir subir varios archivos originales a la vez
             archivos_subidos = st.file_uploader(
                 "Sube tus archivos originales (puedes seleccionar varios a la vez)", 
                 type=["png", "jpg", "jpeg", "ai", "pdf"], 
@@ -174,7 +245,6 @@ def render_portal_cliente(nombre_cliente):
                     img_obj = None
                     if archivos_subidos:
                         try:
-                            # Tomamos la primera imagen para mostrar la miniatura en pantalla
                             img_obj = Image.open(archivos_subidos[0])
                         except Exception:
                             pass
@@ -276,7 +346,6 @@ def render_portal_cliente(nombre_cliente):
             
             st.success("✅ Estado: Digitalización Finalizada")
             
-            # Si subiste múltiples archivos de bordado, mostramos un botón de descarga para cada uno
             if 'archivos_multiples' in logo and logo['archivos_multiples']:
                 st.write("⬇️ **Descarga tus archivos listos:**")
                 for idx, arch in enumerate(logo['archivos_multiples']):
