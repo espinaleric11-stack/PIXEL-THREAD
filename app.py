@@ -69,11 +69,12 @@ if modo == "Panel Administrador (Tú)":
         btn_crear_cli = st.form_submit_button("Registrar Cliente")
         if btn_crear_cli:
             if nuevo_nombre_cli:
-                if nuevo_nombre_cli in st.session_state.clientes_registrados:
+                usuario_limpio = nuevo_nombre_cli.strip()
+                if usuario_limpio in st.session_state.clientes_registrados:
                     st.error("¡Este usuario ya está registrado!")
                 else:
-                    st.session_state.clientes_registrados[nuevo_nombre_cli] = nueva_divisa_cli
-                    st.success(f"¡Cliente '{nuevo_nombre_cli}' registrado con éxito!")
+                    st.session_state.clientes_registrados[usuario_limpio] = nueva_divisa_cli
+                    st.success(f"¡Cliente '{usuario_limpio}' registrado con éxito y habilitado para entrar!")
                     st.rerun()
             else:
                 st.error("Por favor, ingresa un nombre para el cliente.")
@@ -187,30 +188,27 @@ if modo == "Panel Administrador (Tú)":
 
 
 # ==========================================
-# 2. PORTAL DE CLIENTES (ACCESO SOLO CON SU USUARIO ESCRITO)
+# 2. PORTAL DE CLIENTES (SOLO ACCESO CON USUARIOS CREADOS POR EL ADMIN)
 # ==========================================
 elif modo == "Portal de Clientes":
     
     if st.session_state.cliente_logeado is None:
         st.title("👤 Portal de Clientes - Pixel Thread")
-        st.write("Ingresa tu nombre de usuario para acceder a tus pedidos y diseños:")
+        st.write("Ingresa tu nombre de usuario autorizado para acceder a tu portal:")
         
         with st.form(key="form_login_cliente"):
-            usuario_ingresado = st.text_input("Tu Nombre de Usuario / Cliente")
+            usuario_ingresado = st.text_input("Tu Nombre de Usuario")
             btn_entrar = st.form_submit_button("Entrar a mi Portal")
             
             if btn_entrar:
                 usuario_limpio = usuario_ingresado.strip()
-                if usuario_limpio:
-                    # Si el usuario no existe todavía, lo guardamos automáticamente
-                    if usuario_limpio not in st.session_state.clientes_registrados:
-                        st.session_state.clientes_registrados[usuario_limpio] = "Dólares (USD - $)"
-                    
+                # Verificar si el usuario existe en los registros creados por el administrador
+                if usuario_limpio in st.session_state.clientes_registrados:
                     st.session_state.cliente_logeado = usuario_limpio
                     st.success(f"¡Bienvenido, {usuario_limpio}!")
                     st.rerun()
                 else:
-                    st.error("Por favor, introduce un nombre de usuario válido.")
+                    st.error("❌ Este usuario no está registrado o autorizado. Por favor, comunícate con el administrador para que cree tu cuenta.")
     
     else:
         nombre_cliente = st.session_state.cliente_logeado
@@ -220,7 +218,7 @@ elif modo == "Portal de Clientes":
             st.title(f"👤 Portal Privado de: {nombre_cliente}")
         with col_logout:
             st.write("")
-            if st.button("🚪 Cambiar de Usuario"):
+            if st.button("🚪 Cerrar Sesión"):
                 st.session_state.cliente_logeado = None
                 st.rerun()
 
