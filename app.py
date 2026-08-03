@@ -1,483 +1,507 @@
 import streamlit as st
 from PIL import Image
 from streamlit_autorefresh import st_autorefresh
-from datetime import datetime
-import json
-import os
 
 st.set_page_config(page_title="Pixel Thread - Portal Profesional", layout="centered")
-
-# --- ARCHIVO DE PERSISTENCIA LOCAL ---
-DB_FILE = "datos_pixel_thread.json"
-
-def cargar_datos():
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return None
-    return None
-
-def guardar_datos():
-    datos = {
-        "clientes_registrados": st.session_state.clientes_registrados,
-        "logos": [
-            {k: v for k, v in l.items() if k != "imagen_obj"} # Excluimos el objeto PIL para serializar a JSON
-            for l in st.session_state.logos
-        ]
-    }
-    with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(datos, f, ensure_ascii=False, indent=4)
 
 # --- ACTUALIZACIÓN AUTOMÁTICA CADA 2 SEGUNDOS ---
 st_autorefresh(interval=2000, limit=None, key="autorefresh_global")
 
-# --- CARGAR DATOS PERSISTENTES AL INICIAR LA SESIÓN ---
-datos_guardados = cargar_datos()
-
+# --- INICIALIZAR LISTA DE CLIENTES Y DIVISAS ---
 if "clientes_registrados" not in st.session_state:
-    if datos_guardados and "clientes_registrados" in datos_guardados:
-        st.session_state.clientes_registrados = datos_guardados["clientes_registrados"]
-    else:
-        st.session_state.clientes_registrados = {
-            "Cliente A": "Dólares (USD - $)",
-            "Cliente B": "Pesos Dominicanos (DOP - RD$)"
-        }
+    st.session_state.clientes_registrados = {
+        "Cliente A": "Dólares (USD - $)",
+        "Cliente B": "Pesos Dominicanos (DOP - RD$)"
+    }
 
-if "logos" not in st.session_state:
-    if datos_guardados and "logos" in datos_guardados:
-        st.session_state.logos = datos_guardados["logos"]
-    else:
-        st.session_state.logos = [
-            {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "pago": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "comentario": "Urgente", "archivo": "leon.png"},
-            {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "En Revisión", "pago": "Pendiente", "tipo": "Gorra", "ubicacion_gorra": "Frontal", "detalle_gorra": "3D (Puff)", "comentario": "Centrado", "archivo": "cafe.png"},
-            {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Terminado", "pago": "Pagado", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "comentario": "Ninguno", "archivo": "escudo.png"},
-        ]
+# --- CONTROL DE SESIÓN DE CLIENTE Y ADMINISTRADOR ---
+if "cliente_logeado" not in st.session_state:
+    st.session_state.cliente_logeado = None
 
-# Almacén global de recibos de pago por cliente
+if "admin_logeado" not in st.session_state:
+    st.session_state.admin_logeado = False
+
+# --- INICIALIZAR DATOS GLOBALES EN LA SESIÓN ---
+if "logos" not in st.session_state or not st.session_state.logos or "pago" not in st.session_state.logos[0]:
+    st.session_state.logos = [
+        {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "pago": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "posicion_logo": "Pecho Izquierdo", "comentario": "Urgente", "archivo": "leon.png", "imagen_obj": None},
+        {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "En Progreso", "pago": "Pendiente", "tipo": "Gorra", "ubicacion_gorra": "Frontal", "detalle_gorra": "3D (Puff)", "posicion_logo": "Frontal", "comentario": "Centrado", "archivo": "cafe.png", "imagen_obj": None},
+        {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Terminado", "pago": "Pagado", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "posicion_logo": "Espalda", "comentario": "Ninguno", "archivo": "escudo.png", "imagen_obj": None},
+    ]
+
 if "recibos_pago" not in st.session_state:
     st.session_state.recibos_pago = {}
 
-# Control de estado para el formulario
 if "form_enviado" not in st.session_state:
     st.session_state.form_enviado = False
 
 # --- MENÚ DE NAVEGACIÓN RÁPIDA ---
 st.sidebar.title("Pixel Thread 🧵")
-lista_vistas = ["Panel Administrador (Tú)"] + [f"Portal {cli}" for cli in st.session_state.clientes_registrados.keys()]
-modo = st.sidebar.radio("Selecciona la Vista:", lista_vistas)
+modo = st.sidebar.radio("Selecciona el Modo:", ["Panel Administrador (Tú)", "Portal de Clientes"])
 
 st.sidebar.divider()
 st.sidebar.info("💡 Tarifa oficial: $5.00 USD / $300.00 DOP por logo digitalizado.")
 st.sidebar.caption("🔄 Actualización automática activa (cada 2 seg)")
 
 # ==========================================
-# 1. VISTA ADMINISTRADOR
+# 1. VISTA ADMINISTRADOR (CON SEGURIDAD)
 # ==========================================
 if modo == "Panel Administrador (Tú)":
-    st.title("🎛️ Panel de Control - Pixel Thread")
-    st.write("Administra el flujo de trabajo industrial, el estado de pagos y la entrega de archivos de bordado (.DST/.EMB/.PDF).")
-
-    total_usd = sum(l.get('precio_usd', 5.0) for l in st.session_state.logos if l.get('pago', 'Pendiente') == "Pagado")
-    total_dop = sum(l.get('precio_dop', 300.0) for l in st.session_state.logos if l.get('pago', 'Pendiente') == "Pagado")
     
-    col1, col2 = st.columns(2)
-    col1.metric("Ingresos Cobrados (USD)", f"${total_usd:.2f} USD")
-    col2.metric("Ingresos Cobrados (DOP)", f"RD$ {total_dop:,.2f}")
-
-    st.divider()
-
-    # --- SECCIÓN PRINCIPAL: AGREGAR NUEVOS CLIENTES ---
-    st.subheader("➕ Registrar Nuevo Cliente y su Divisa")
-    with st.form(key="form_nuevo_cliente"):
-        col_nc1, col_nc2 = st.columns(2)
-        with col_nc1:
-            nuevo_nombre_cli = st.text_input("Nombre del Cliente o Empresa")
-        with col_nc2:
-            nueva_divisa_cli = st.selectbox("Moneda Principal / Divisa", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"])
+    if not st.session_state.admin_logeado:
+        st.title("🔐 Acceso Restringido - Panel Administrador")
+        st.write("Introduce tu usuario de administrador autorizado para continuar:")
         
-        btn_crear_cli = st.form_submit_button("Registrar Cliente")
-        if btn_crear_cli:
-            if nuevo_nombre_cli:
-                if nuevo_nombre_cli in st.session_state.clientes_registrados:
-                    st.error("¡Este cliente ya está registrado!")
+        with st.form(key="form_login_admin"):
+            usuario_admin_ingresado = st.text_input("Usuario Administrador", type="password")
+            btn_login_admin = st.form_submit_button("Ingresar al Panel")
+            
+            if btn_login_admin:
+                if usuario_admin_ingresado.strip() == "2580Pixel":
+                    st.session_state.admin_logeado = True
+                    st.success("¡Acceso concedido!")
+                    st.rerun()
                 else:
-                    st.session_state.clientes_registrados[nuevo_nombre_cli] = nueva_divisa_cli
-                    guardar_datos()
-                    st.success(f"¡Cliente '{nuevo_nombre_cli}' agregado con éxito! Ya aparece en el menú lateral.")
-                    st.rerun()
-            else:
-                st.error("Por favor, ingresa un nombre para el cliente.")
-
-    st.divider()
-
-    # --- SECCIÓN DE CONTROL, CIERRE DE CICLO Y ELIMINACIÓN POR CLIENTE ---
-    st.subheader("👥 Control, Cierre de Ciclo y Gestión de Clientes")
-    st.write("Revisa los pagos, reinicia el acumulador semanal individual o elimina usuarios según necesites:")
+                    st.error("❌ Usuario de administrador incorrecto.")
     
-    for cli in list(st.session_state.clientes_registrados.keys()):
-        logos_cli_term = [l for l in st.session_state.logos if l.get('cliente') == cli and l.get('estado', 'Pendiente') == "Terminado"]
-        sub_usd = sum(l.get('precio_usd', 5.0) for l in logos_cli_term)
-        sub_dop = sum(l.get('precio_dop', 300.0) for l in logos_cli_term)
-        
-        with st.expander(f"👤 Cliente: {cli} — Acumulado Terminado: ${sub_usd:.2f} USD / RD$ {sub_dop:,.2f}"):
-            c_info, c_btn_reset, c_btn_del = st.columns([2, 1, 1])
-            with c_info:
-                st.write(f"Trabajos terminados pendientes de cerrar ciclo: **{len(logos_cli_term)}**")
-            with c_btn_reset:
-                if st.button(f"🔄 Reiniciar Ciclo", key=f"reset_cli_{cli}"):
-                    for logo in st.session_state.logos:
-                        if logo.get('cliente') == cli and logo.get('estado', 'Pendiente') == "Terminado":
-                            logo['pago'] = "Pagado"
-                            logo['estado'] = "Archivado/Pagado"
-                    guardar_datos()
-                    st.success(f"¡Ciclo de {cli} reiniciado con éxito!")
-                    st.rerun()
-            with c_btn_del:
-                if st.button(f"🗑️ Eliminar Usuario", key=f"del_cli_{cli}"):
-                    del st.session_state.clientes_registrados[cli]
-                    if cli in st.session_state.recibos_pago:
-                        del st.session_state.recibos_pago[cli]
-                    st.session_state.logos = [l for l in st.session_state.logos if l.get('cliente') != cli]
-                    guardar_datos()
-                    st.warning(f"¡El usuario '{cli}' y sus datos asociados han sido eliminados!")
-                    st.rerun()
-
-    st.divider()
-
-    # --- SECCIÓN DE RECIBOS DE PAGO ENVIADOS POR CLIENTES ---
-    st.subheader("🧾 Recibos de Pago Subidos por Clientes")
-    if st.session_state.recibos_pago:
-        for cli, recibo_info in st.session_state.recibos_pago.items():
-            with st.expander(f"📥 Ver Recibo de Pago de: {cli} ({recibo_info['nombre_archivo']})"):
-                st.download_button(
-                    label=f"Descargar comprobante de {cli}",
-                    data=recibo_info['bytes'],
-                    file_name=recibo_info['nombre_archivo'],
-                    mime="application/octet-stream",
-                    key=f"dl_recibo_{cli}"
-                )
     else:
-        st.info("No hay recibos de pago subidos por los clientes todavía.")
-
-    st.divider()
-
-    logos_activos_admin = [l for l in st.session_state.logos if l.get('estado') != "Archivado/Pagado"]
-    logos_por_hacer = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') != "Terminado"]
-    logos_terminados = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') == "Terminado"]
-    logos_ordenados_admin = logos_por_hacer + logos_terminados
-
-    st.subheader("📋 Gestión de Trabajos")
-
-    for logo in logos_ordenados_admin:
-        i = st.session_state.logos.index(logo)
-        
-        with st.container():
-            col_img, col_info = st.columns([1, 3])
-            
-            with col_img:
-                if logo.get('imagen_obj') is not None:
-                    st.image(logo['imagen_obj'], caption="Diseño Original", width=100)
-                else:
-                    st.info("Sin miniatura")
-
-            with col_info:
-                st.markdown(f"### 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*")
-                st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
-                st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
-                st.write(f"**Archivo cliente:** `📁 {logo.get('archivo', 'Sin archivo')}`")
-                st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
-            
-            estado_actual = logo.get('estado', 'Pendiente')
-            
-            c1, c2, c3 = st.columns(3)
-            
-            if estado_actual == "Pendiente":
-                if c1.button("🔍 Pasar a Revisión", key=f"rev_{logo['id']}"):
-                    st.session_state.logos[i]['estado'] = "En Revisión"
-                    guardar_datos()
-                    st.rerun()
-            elif estado_actual == "En Revisión":
-                c1.info("🔍 En Revisión")
-                if c2.button("▶ Iniciar (Luz Verde)", key=f"iniciar_{logo['id']}"):
-                    st.session_state.logos[i]['estado'] = "En Progreso"
-                    guardar_datos()
-                    st.rerun()
-            elif estado_actual == "En Progreso":
-                c1.warning("🟢 En Progreso")
-                if c2.button("✓ Marcar Terminado", key=f"terminar_{logo['id']}"):
-                    st.session_state.logos[i]['estado'] = "Terminado"
-                    guardar_datos()
-                    st.rerun()
-            else:
-                c1.success("✅ Terminado")
-                pago_actual = logo.get('pago', 'Pendiente')
-                nuevo_pago = c2.selectbox("Estado de Pago", ["Pendiente", "Pagado"], index=0 if pago_actual=="Pendiente" else 1, key=f"pago_{logo['id']}")
-                if nuevo_pago != pago_actual:
-                    st.session_state.logos[i]['pago'] = nuevo_pago
-                    guardar_datos()
-                    st.rerun()
-
-            with st.expander("📤 Subir múltiples archivos de bordado (.DST / .EMB / .PDF)"):
-                archivos_bordado = st.file_uploader(
-                    "Sube los archivos listos para bordar", 
-                    type=["dst", "emb", "pes", "jef", "pdf"], 
-                    accept_multiple_files=True, 
-                    key=f"bordado_{logo['id']}"
-                )
-                if archivos_bordado:
-                    logo['archivos_multiples'] = [{"nombre": f.name, "bytes": f.getvalue()} for f in archivos_bordado]
-                    guardar_datos()
-                    nombres_str = ", ".join([f.name for f in archivos_bordado])
-                    st.success(f"Archivos guardados correctamente: {nombres_str}")
-
-            st.divider()
-
-    st.subheader("📄 Generación de Factura / Corte Semanal General")
-    if st.button("Generar Corte Semanal"):
-        fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        contenido_factura = f"=========================================\n"
-        contenido_factura += f"         PIXEL THREAD - FACTURA          \n"
-        contenido_factura += f"           CORTE SEMANAL GENERAL         \n"
-        contenido_factura += f"=========================================\n"
-        contenido_factura += f"Fecha de emisión: {fecha_actual}\n\n"
-        
-        total_gen_usd = 0.0
-        total_gen_dop = 0.0
-        
-        for idx, logo in enumerate(st.session_state.logos, 1):
-            p_usd = logo.get('precio_usd', 5.0)
-            p_dop = logo.get('precio_dop', 300.0)
-            total_gen_usd += p_usd
-            total_gen_dop += p_dop
-            
-            contenido_factura += f"Item #{idx}\n"
-            contenido_factura += f" - Cliente: {logo.get('cliente', 'N/A')}\n"
-            contenido_factura += f" - Diseño: {logo.get('nombre', 'N/A')}\n"
-            contenido_factura += f" - Estado: {logo.get('estado', 'Pendiente')}\n"
-            contenido_factura += f" - Pago: {logo.get('pago', 'Pendiente')}\n"
-            contenido_factura += f" - Precio: ${p_usd:.2f} USD / RD${p_dop:.2f} DOP\n"
-            contenido_factura += f"-----------------------------------------\n"
-            
-        contenido_factura += f"\nTOTAL GENERAL ACUMULADO:\n"
-        contenido_factura += f"USD: ${total_gen_usd:.2f}\n"
-        contenido_factura += f"DOP: RD$ {total_gen_dop:,.2f}\n"
-        contenido_factura += f"=========================================\n"
-        
-        st.success("¡Corte y factura generados con éxito!")
-        
-        st.download_button(
-            label="⬇️ Descargar Factura / Corte en TXT",
-            data=contenido_factura,
-            file_name=f"factura_corte_semanal_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-            mime="text/plain"
-        )
-
-
-# ==========================================
-# FUNCIÓN GENÉRICA PARA EL PORTAL DE CLIENTES
-# ==========================================
-def render_portal_cliente(nombre_cliente):
-    st.title(f"👤 Portal de Cliente: {nombre_cliente}")
-    st.write("Bienvenido a Pixel Thread. Gestiona tus solicitudes y descarga tus archivos de bordado digitalizados.")
-    
-    divisa_default = st.session_state.clientes_registrados.get(nombre_cliente, "Dólares (USD - $)")
-    divisa = st.radio("Selecciona tu moneda:", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"], index=0 if "Dólares" in divisa_default else 1, horizontal=True, key=f"divisa_{nombre_cliente}")
-    
-    logos_cliente = [l for l in st.session_state.logos if l.get('cliente') == nombre_cliente and l.get('estado') != "Archivado/Pagado"]
-    
-    col_metrica, col_recibo = st.columns(2)
-
-    with col_metrica:
-        if "Dólares" in divisa:
-            total_cliente = sum(l.get('precio_usd', 5.0) for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado")
-            st.metric("Total Acumulado (Semana)", f"${total_cliente:.2f} USD")
-        else:
-            total_cliente = sum(l.get('precio_dop', 300.0) for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado")
-            st.metric("Total Acumulado (Semana)", f"RD$ {total_cliente:,.2f}")
-
-    with col_recibo:
-        st.write("🧾 **Subir Recibo de Pago**")
-        recibo_subido = st.file_uploader("Sube tu comprobante", type=["png", "jpg", "jpeg", "pdf"], key=f"recibo_file_{nombre_cliente}")
-        if recibo_subido:
-            st.session_state.recibos_pago[nombre_cliente] = {
-                "nombre_archivo": recibo_subido.name,
-                "bytes": recibo_subido.getvalue()
-            }
-            st.success("¡Recibo enviado al administrador con éxito!")
-
-    st.divider()
-
-    with st.expander("➕ Enviar un Nuevo Logo a Digitalizar", expanded=not st.session_state.form_enviado):
-        if st.session_state.form_enviado:
-            st.success("✅ ¡ORDEN AGREGADA CORRECTAMENTE!")
-            if st.button("Enviar otro diseño", key=f"otro_{nombre_cliente}"):
-                st.session_state.form_enviado = False
+        col_tadmin, col_btadmin = st.columns([3, 1])
+        with col_tadmin:
+            st.title("🎛️ Panel de Control - Pixel Thread")
+        with col_btadmin:
+            st.write("")
+            if st.button("🔒 Cerrar Admin"):
+                st.session_state.admin_logeado = False
                 st.rerun()
-        else:
-            nombre_logo = st.text_input("Nombre del Logo / Diseño", key=f"inp_nom_{nombre_cliente}")
-            
-            archivos_subidos = st.file_uploader(
-                "Sube tus archivos originales (puedes seleccionar varios a la vez)", 
-                type=["png", "jpg", "jpeg", "ai", "pdf"], 
-                accept_multiple_files=True, 
-                key=f"inp_file_{nombre_cliente}"
-            )
-            
-            tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"], key=f"tipo_app_{nombre_cliente}")
-            
-            ubicacion_gorra = "N/A"
-            detalle_gorra = "N/A"
-            
-            if tipo_aplicacion == "Gorra":
-                ubicacion_gorra = st.radio("Selecciona la ubicación en la gorra:", ["Frontal", "Trasero", "Lateral"], key=f"ubicacion_{nombre_cliente}")
-                if ubicacion_gorra == "Frontal":
-                    detalle_gorra = st.radio("Selecciona el estilo:", ["3D (Puff)", "Plano (Flat)"], key=f"detalle_{nombre_cliente}")
-                else:
-                    detalle_gorra = "Plano (Flat)"
-            
-            comentario_cliente = st.text_area("Comentarios o instrucciones especiales", key=f"inp_com_{nombre_cliente}")
-            
-            if st.button("Enviar Logo a Pixel Thread", key=f"btn_enviar_{nombre_cliente}"):
-                if nombre_logo:
-                    nombre_archivo = ", ".join([f.name for f in archivos_subidos]) if archivos_subidos else "Sin archivo adjunto"
-                    img_obj = None
-                    if archivos_subidos:
-                        try:
-                            img_obj = Image.open(archivos_subidos[0])
-                        except Exception:
-                            pass
 
-                    nuevo_logo = {
-                        "id": len(st.session_state.logos) + 1,
-                        "cliente": nombre_cliente,
-                        "nombre": nombre_logo,
-                        "precio_usd": 5.0,
-                        "precio_dop": 300.0,
-                        "estado": "Pendiente",
-                        "pago": "Pendiente",
-                        "tipo": tipo_aplicacion,
-                        "ubicacion_gorra": ubicacion_gorra,
-                        "detalle_gorra": detalle_gorra,
-                        "comentario": comentario_cliente if comentario_cliente else "Ninguno",
-                        "archivo": nombre_archivo
-                    }
-                    st.session_state.logos.append(nuevo_logo)
-                    guardar_datos()
-                    st.session_state.form_enviado = True
-                    st.toast("¡Orden agregada con éxito!", icon="🎉")
-                    st.rerun()
-                else:
-                    st.error("Por favor, ingresa un nombre para el logo.")
+        st.write("Administra el flujo de trabajo industrial, el estado de pagos y la entrega de archivos de bordado.")
 
-    logos_por_realizar = [l for l in logos_cliente if l.get('estado', 'Pendiente') != "Terminado"]
-    
-    st.subheader("⏳ Trabajos por Realizar")
-    if not logos_por_realizar:
-        st.info("No tienes trabajos pendientes actualmente.")
-
-    for logo in logos_por_realizar:
-        col_img, col_info = st.columns([1, 3])
-        with col_img:
-            if logo.get('imagen_obj') is not None:
-                st.image(logo['imagen_obj'], caption="Tu Diseño", width=100)
-            else:
-                st.info("Sin miniatura")
-                
-        with col_info:
-            st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
-            st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
-            st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
-            st.write(f"**Archivos:** `📁 {logo.get('archivo', 'N/A')}`")
+        recibos_pendientes_count = len(st.session_state.recibos_pago)
+        nuevos_logos_count = len([l for l in st.session_state.logos if l.get('estado', 'Pendiente') == "Pendiente"])
         
-        estado_logo = logo.get('estado', 'Pendiente')
-        if estado_logo == "Pendiente":
-            st.info("⏳ Estado: Recibido / En espera de revisión")
-            col_mod, col_elim = st.columns(2)
-            with col_mod:
-                with st.popover("✏️ Modificar Orden"):
-                    with st.form(key=f"edit_form_{logo['id']}"):
-                        nuevo_nombre = st.text_input("Nuevo nombre", value=logo.get('nombre', ''))
-                        nuevo_comentario = st.text_area("Nuevas notas", value=logo.get('comentario', ''))
-                        if st.form_submit_button("Guardar Cambios"):
-                            logo['nombre'] = nuevo_nombre
-                            logo['comentario'] = nuevo_comentario
-                            guardar_datos()
-                            st.success("¡Modificado!")
-                            st.rerun()
-            with col_elim:
-                if st.button("🗑️ Eliminar", key=f"del_{logo['id']}"):
-                    st.session_state.logos.remove(logo)
-                    guardar_datos()
-                    st.warning("Orden eliminada.")
-                    st.rerun()
-        elif estado_logo == "En Revisión":
-            st.info("🔍 Estado: Verificando calidad del archivo para digitalización")
-        elif estado_logo == "En Progreso":
+        if recibos_pendientes_count > 0 or nuevos_logos_count > 0:
+            alerta_textos = []
+            if recibos_pendientes_count > 0:
+                alerta_textos.append(f"🧾 Hay **{recibos_pendientes_count}** comprobante(s) de pago nuevo(s) para revisar.")
+            if nuevos_logos_count > 0:
+                alerta_textos.append(f"⏳ Hay **{nuevos_logos_count}** logo(s) en cola pendientes de iniciar.")
+            
             st.markdown(
-                """
-                <div style="background-color: #d1fae5; border-left: 6px solid #10b981; padding: 10px; border-radius: 5px; color: #065f46; font-weight: bold;">
-                    🟢 ¡DIGITALIZANDO EN PROGRESO! (Bloqueado para cambios)
+                f"""
+                <div style="background-color: #fef3c7; border-left: 6px solid #f59e0b; padding: 12px; border-radius: 5px; color: #92400e; margin-bottom: 20px;">
+                    <strong>🔔 Atención Requerida:</strong><br>
+                    {"<br>".join(alerta_textos)}
                 </div>
-                """, 
+                """,
                 unsafe_allow_html=True
             )
+
+        logos_activos_admin = [l for l in st.session_state.logos if l.get('estado') != "Archivado/Pagado"]
+        logos_por_hacer_count = len([l for l in logos_activos_admin if l.get('estado', 'Pendiente') != "Terminado"])
+        logos_terminados_count = len([l for l in logos_activos_admin if l.get('estado', 'Pendiente') == "Terminado"])
+
+        total_usd = sum(l.get('precio_usd', 5.0) for l in st.session_state.logos if l.get('pago', 'Pendiente') == "Pagado")
+        total_dop = sum(l.get('precio_dop', 300.0) for l in st.session_state.logos if l.get('pago', 'Pendiente') == "Pagado")
         
-        precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
-        st.write(f"Precio estimado: **{precio_mostrar}**")
+        c_m1, c_m2, c_m3, c_m4 = st.columns(4)
+        c_m1.metric("⏳ Logos por Hacer", logos_por_hacer_count)
+        c_m2.metric("✅ Logos Terminados", logos_terminados_count)
+        c_m3.metric("Total Acumulado (USD)", f"${total_usd:.2f} USD")
+        c_m4.metric("Total Acumulado (DOP)", f"RD$ {total_dop:,.2f}")
+
         st.divider()
 
-    logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
-    if logos_realizados:
-        st.subheader("✅ Trabajos Realizados y Descargas")
-        for logo in logos_realizados:
-            col_img, col_info = st.columns([1, 3])
-            with col_img:
-                if logo.get('imagen_obj') is not None:
-                    st.image(logo['imagen_obj'], caption="Diseño", width=100)
-                else:
-                    st.info("Sin miniatura")
-                    
-            with col_info:
-                st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
-                st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
-                st.write(f"**Notas:** {logo.get('comentario', 'Ninguno')}")
-            
-            st.success("✅ Estado: Digitalización Finalizada")
-            
-            if 'archivos_multiples' in logo and logo['archivos_multiples']:
-                st.write("⬇️ **Descarga tus archivos listos:**")
-                for idx, arch in enumerate(logo['archivos_multiples']):
-                    st.download_button(
-                        label=f"Descargar: {arch['nombre']}",
-                        data=arch['bytes'],
-                        file_name=arch['nombre'],
-                        mime="application/octet-stream",
-                        key=f"dl_multi_{logo['id']}_{idx}"
-                    )
-            elif 'archivo_bordado_bytes' in logo and logo['archivo_bordado_bytes']:
-                st.download_button(
-                    label=f"⬇️ Descargar Archivo Listo: {logo.get('archivo_bordado_nombre', 'bordado.dst')}",
-                    data=logo['archivo_bordado_bytes'],
-                    file_name=logo.get('archivo_bordado_nombre', 'bordado.dst'),
-                    mime="application/octet-stream",
-                    key=f"dl_{logo['id']}"
-                )
-            else:
-                st.info("📁 Los archivos de bordado estarán disponibles para descarga en breve.")
-            
-            precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
-            st.write(f"Precio final: **{precio_mostrar}** | Pago: **{logo.get('pago', 'Pendiente')}**")
+        with st.expander("⚙️ Panel de Gestión: Clientes, Cierre de Ciclos y Recibos", expanded=False):
+            st.subheader("➕ Registrar Nuevo Cliente y su Moneda")
+            with st.form(key="form_nuevo_cliente"):
+                col_nc1, col_nc2 = st.columns(2)
+                with col_nc1:
+                    nuevo_nombre_cli = st.text_input("Nombre de Usuario / Cliente")
+                with col_nc2:
+                    nueva_divisa_cli = st.selectbox("Moneda Principal", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"])
+                
+                btn_crear_cli = st.form_submit_button("Registrar Cliente")
+                if btn_crear_cli:
+                    if nuevo_nombre_cli:
+                        usuario_limpio = nuevo_nombre_cli.strip()
+                        if usuario_limpio in st.session_state.clientes_registrados:
+                            st.error("¡Este usuario ya está registrado!")
+                        else:
+                            st.session_state.clientes_registrados[usuario_limpio] = nueva_divisa_cli
+                            st.success(f"¡Cliente '{usuario_limpio}' registrado con éxito y habilitado para entrar!")
+                            st.rerun()
+                    else:
+                        st.error("Por favor, ingresa un nombre para el cliente.")
+
             st.divider()
 
+            st.subheader("👥 Control, Cierre de Ciclo y Eliminación por Cliente")
+            for cli in list(st.session_state.clientes_registrados.keys()):
+                logos_cli_term = [l for l in st.session_state.logos if l.get('cliente') == cli and l.get('estado', 'Pendiente') == "Terminado"]
+                sub_usd = sum(l.get('precio_usd', 5.0) for l in logos_cli_term)
+                sub_dop = sum(l.get('precio_dop', 300.0) for l in logos_cli_term)
+                
+                with st.expander(f"👤 Cliente: {cli} — Acumulado Terminado: ${sub_usd:.2f} USD / RD$ {sub_dop:,.2f}"):
+                    c_info, c_btn1, c_btn2 = st.columns([2, 1, 1])
+                    with c_info:
+                        st.write(f"Trabajos terminados pendientes de cerrar ciclo: **{len(logos_cli_term)}**")
+                    with c_btn1:
+                        if st.button(f"🔄 Reiniciar Ciclo", key=f"reset_cli_{cli}"):
+                            for logo in st.session_state.logos:
+                                if logo.get('cliente') == cli and logo.get('estado', 'Pendiente') == "Terminado":
+                                    logo['pago'] = "Pagado"
+                                    logo['estado'] = "Archivado/Pagado"
+                            st.success(f"¡Ciclo de {cli} reiniciado!")
+                            st.rerun()
+                    with c_btn2:
+                        if st.button(f"🗑️ Eliminar Usuario", key=f"del_user_{cli}"):
+                            del st.session_state.clientes_registrados[cli]
+                            if cli in st.session_state.recibos_pago:
+                                del st.session_state.recibos_pago[cli]
+                            st.warning(f"¡Usuario '{cli}' eliminado correctamente!")
+                            st.rerun()
+
+            st.divider()
+
+            st.subheader("🧾 Recibos de Pago Subidos por Clientes")
+            if st.session_state.recibos_pago:
+                for cli, recibo_info in st.session_state.recibos_pago.items():
+                    with st.expander(f"📥 Ver Recibo de Pago de: {cli} ({recibo_info['nombre_archivo']})"):
+                        st.image(recibo_info['bytes'], caption=f"Comprobante de {cli}", width=300)
+                        st.download_button(
+                            label=f"Descargar comprobante de {cli}",
+                            data=recibo_info['bytes'],
+                            file_name=recibo_info['nombre_archivo'],
+                            mime="application/octet-stream",
+                            key=f"dl_recibo_{cli}"
+                        )
+            else:
+                st.info("No hay recibos de pago subidos por los clientes todavía.")
+
+        st.divider()
+
+        logos_por_hacer = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') != "Terminado"]
+        logos_terminados = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') == "Terminado"]
+        logos_ordenados_admin = logos_por_hacer + logos_terminados
+
+        st.subheader("📋 Gestión de Trabajos")
+
+        for logo in logos_ordenados_admin:
+            i = st.session_state.logos.index(logo)
+            
+            with st.container():
+                col_img, col_info = st.columns([1, 3])
+                
+                with col_img:
+                    if logo.get('imagen_obj') is not None:
+                        st.image(logo['imagen_obj'], caption="Diseño Original", width=100)
+                        with st.popover("🔍 Ver Grande"):
+                            st.image(logo['imagen_obj'], caption=f"Diseño: {logo.get('nombre')}", use_container_width=True)
+                    else:
+                        st.info("Sin miniatura")
+
+                with col_info:
+                    st.markdown(f"### 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*")
+                    st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Posición:** {logo.get('posicion_logo', 'No especificada')} | **Estado Actual:** `{logo.get('estado', 'Pendiente')}`")
+                    st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
+                    st.write(f"**Archivo cliente:** `📁 {logo.get('archivo', 'Sin archivo')}`")
+                    st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
+                
+                estado_actual = logo.get('estado', 'Pendiente')
+                
+                c1, c2, c3 = st.columns(3)
+                
+                if estado_actual == "Pendiente":
+                    if c1.button("▶ Iniciar (Luz Verde)", key=f"iniciar_{logo['id']}"):
+                        st.session_state.logos[i]['estado'] = "En Progreso"
+                        st.rerun()
+                elif estado_actual == "En Progreso":
+                    c1.warning("🟢 En Progreso")
+                    if c2.button("✓ Marcar Terminado", key=f"terminar_{logo['id']}"):
+                        st.session_state.logos[i]['estado'] = "Terminado"
+                        st.rerun()
+                else:
+                    c1.success("✅ Terminado")
+                    pago_actual = logo.get('pago', 'Pendiente')
+                    nuevo_pago = c2.selectbox("Estado de Pago", ["Pendiente", "Pagado"], index=0 if pago_actual=="Pendiente" else 1, key=f"pago_{logo['id']}")
+                    if nuevo_pago != pago_actual:
+                        st.session_state.logos[i]['pago'] = nuevo_pago
+                        st.rerun()
+
+                with st.form(key=f"form_subida_archivos_{logo['id']}"):
+                    archivos_bordado = st.file_uploader(
+                        "Sube los archivos listos para bordar (.DST / .EMB / .PDF)", 
+                        type=["dst", "emb", "pes", "jef", "pdf"], 
+                        accept_multiple_files=True, 
+                        key=f"bordado_{logo['id']}"
+                    )
+                    btn_guardar_archivos = st.form_submit_button("Guardar Archivos en la Orden")
+                    if btn_guardar_archivos:
+                        if archivos_bordado:
+                            st.session_state.logos[i]['archivos_multiples'] = [{"nombre": f.name, "bytes": f.getvalue()} for f in archivos_bordado]
+                            nombres_str = ", ".join([f.name for f in archivos_bordado])
+                            st.success(f"¡Archivos guardados correctamente: {nombres_str}!")
+                            st.rerun()
+                        else:
+                            st.warning("Por favor, selecciona al menos un archivo para subir.")
+
+                st.divider()
+
 
 # ==========================================
-# GESTIÓN DINÁMICA DE VISTAS DE CLIENTES
+# 2. PORTAL DE CLIENTES
 # ==========================================
-if modo == "Panel Administrador (Tú)":
-    pass
-else:
-    nombre_cliente_actual = modo.replace("Portal ", "")
-    if nombre_cliente_actual in st.session_state.clientes_registrados:
-        render_portal_cliente(nombre_cliente_actual)
+elif modo == "Portal de Clientes":
+    
+    if st.session_state.cliente_logeado is None:
+        st.title("👤 Portal de Clientes - Pixel Thread")
+        st.write("Ingresa tu nombre de usuario autorizado para acceder a tu portal:")
+        
+        with st.form(key="form_login_cliente"):
+            usuario_ingresado = st.text_input("Tu Nombre de Usuario")
+            btn_entrar = st.form_submit_button("Entrar a mi Portal")
+            
+            if btn_entrar:
+                usuario_limpio = usuario_ingresado.strip()
+                if usuario_limpio in st.session_state.clientes_registrados:
+                    st.session_state.cliente_logeado = usuario_limpio
+                    st.success(f"¡Bienvenido, {usuario_limpio}!")
+                    st.rerun()
+                else:
+                    st.error("❌ Este usuario no está registrado o autorizado. Por favor, comunícate con el administrador para que cree tu cuenta.")
+    
+    else:
+        nombre_cliente = st.session_state.cliente_logeado
+        
+        col_title, col_logout = st.columns([3, 1])
+        with col_title:
+            st.title(f"👤 Portal Privado de: {nombre_cliente}")
+        with col_logout:
+            st.write("")
+            if st.button("🚪 Salir"):
+                st.session_state.cliente_logeado = None
+                st.rerun()
+
+        st.write("Gestiona tus solicitudes de bordado y descarga tus archivos finalizados de manera segura.")
+        
+        divisa_default = st.session_state.clientes_registrados.get(nombre_cliente, "Dólares (USD - $)")
+        divisa = st.radio("Selecciona tu moneda:", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"], index=0 if "Dólares" in divisa_default else 1, horizontal=True, key=f"divisa_{nombre_cliente}")
+        
+        logos_cliente = [l for l in st.session_state.logos if l.get('cliente') == nombre_cliente and l.get('estado') != "Archivado/Pagado"]
+        
+        col_metrica, col_recibo = st.columns(2)
+
+        with col_metrica:
+            if "Dólares" in divisa:
+                total_cliente = sum(l.get('precio_usd', 5.0) for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado")
+                st.metric("Total Acumulado (Semana)", f"${total_cliente:.2f} USD")
+            else:
+                total_cliente = sum(l.get('precio_dop', 300.0) for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado")
+                st.metric("Total Acumulado (Semana)", f"RD$ {total_cliente:,.2f}")
+
+        with col_recibo:
+            st.write("🧾 **Subir Recibo de Pago**")
+            with st.form(key=f"form_recibo_{nombre_cliente}"):
+                recibo_subido = st.file_uploader("Sube tu comprobante", type=["png", "jpg", "jpeg", "pdf"], key=f"recibo_file_{nombre_cliente}")
+                btn_enviar_recibo = st.form_submit_button("Enviar Comprobante")
+                if btn_enviar_recibo:
+                    if recibo_subido:
+                        st.session_state.recibos_pago[nombre_cliente] = {
+                            "nombre_archivo": recibo_subido.name,
+                            "bytes": recibo_subido.getvalue()
+                        }
+                        st.success("¡Recibo enviado al administrador con éxito!")
+                        st.rerun()
+                    else:
+                        st.warning("Selecciona un archivo antes de enviar.")
+
+        st.divider()
+
+        with st.expander("➕ Enviar un Nuevo Logo a Digitalizar", expanded=False):
+            if st.session_state.form_enviado:
+                st.success("✅ ¡ORDEN AGREGADA CORRECTAMENTE!")
+                if st.button("Enviar otro diseño", key=f"otro_{nombre_cliente}"):
+                    st.session_state.form_enviado = False
+                    st.rerun()
+            else:
+                with st.form(key=f"form_nuevo_logo_{nombre_cliente}"):
+                    nombre_logo = st.text_input("Nombre del Logo / Diseño")
+                    
+                    archivos_subidos = st.file_uploader(
+                        "Sube tus archivos originales (puedes seleccionar varios a la vez)", 
+                        type=["png", "jpg", "jpeg", "ai", "pdf"], 
+                        accept_multiple_files=True
+                    )
+                    
+                    tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"])
+                    
+                    posicion_logo = st.selectbox(
+                        "Posición del logo en la prenda:", 
+                        ["Pecho Izquierdo", "Pecho Derecho", "Centro Pecho", "Espalda Alta", "Espalda Centro", "Manga Izquierda", "Manga Derecha", "Gorra Frontal", "Gorra Lateral", "Gorra Trasera", "Otra posición"]
+                    )
+                    
+                    ubicacion_gorra = "N/A"
+                    detalle_gorra = "N/A"
+                    
+                    if tipo_aplicacion == "Gorra":
+                        ubicacion_gorra = st.radio("Selecciona la ubicación específica en la gorra:", ["Frontal", "Trasero", "Lateral"])
+                        if ubicacion_gorra == "Frontal":
+                            detalle_gorra = st.radio("Selecciona el estilo:", ["3D (Puff)", "Plano (Flat)"])
+                        else:
+                            detalle_gorra = "Plano (Flat)"
+                    
+                    comentario_cliente = st.text_area("Comentarios o instrucciones especiales")
+                    
+                    btn_enviar_logo = st.form_submit_button("Enviar Logo a Pixel Thread")
+                    if btn_enviar_logo:
+                        if nombre_logo:
+                            nombre_archivo = ", ".join([f.name for f in archivos_subidos]) if archivos_subidos else "Sin archivo adjunto"
+                            img_obj = None
+                            if archivos_subidos:
+                                try:
+                                    img_obj = Image.open(archivos_subidos[0])
+                                except Exception:
+                                    pass
+
+                            nuevo_logo = {
+                                "id": len(st.session_state.logos) + 1,
+                                "cliente": nombre_cliente,
+                                "nombre": nombre_logo,
+                                "precio_usd": 5.0,
+                                "precio_dop": 300.0,
+                                "estado": "Pendiente",
+                                "pago": "Pendiente",
+                                "tipo": tipo_aplicacion,
+                                "ubicacion_gorra": ubicacion_gorra,
+                                "detalle_gorra": detalle_gorra,
+                                "posicion_logo": posicion_logo,
+                                "comentario": comentario_cliente if comentario_cliente else "Ninguno",
+                                "archivo": nombre_archivo,
+                                "imagen_obj": img_obj
+                            }
+                            st.session_state.logos.append(nuevo_logo)
+                            st.session_state.form_enviado = True
+                            st.rerun()
+                        else:
+                            st.error("Por favor, ingresa un nombre para el logo.")
+
+        # --- CONTENEDOR DINÁMICO PARA FORZAR ACTUALIZACIÓN DE ESTADOS ---
+        contenedor_dinamico = st.container()
+
+        with contenedor_dinamico:
+            # Filtrar exclusivamente los que NO están terminados para la sección de pendientes
+            logos_por_realizar = [l for l in logos_cliente if l.get('estado', 'Pendiente') != "Terminado"]
+            
+            st.subheader("⏳ Trabajos por Realizar y Turno en Cola")
+            if not logos_por_realizar:
+                st.info("No tienes trabajos pendientes actualmente.")
+
+            cola_global_activa = [l for l in st.session_state.logos if l.get('estado', 'Pendiente') != "Terminado" and l.get('estado') != "Archivado/Pagado"]
+
+            for logo in logos_por_realizar:
+                if logo in cola_global_activa:
+                    posicion_en_cola = cola_global_activa.index(logo) + 1
+                else:
+                    posicion_en_cola = "?"
+
+                col_img, col_info = st.columns([1, 3])
+                with col_img:
+                    if logo.get('imagen_obj') is not None:
+                        st.image(logo['imagen_obj'], caption="Tu Diseño", width=100)
+                        with st.popover("🔍 Ver Grande"):
+                            st.image(logo['imagen_obj'], caption=f"Tu Diseño: {logo.get('nombre')}", use_container_width=True)
+                    else:
+                        st.info("Sin miniatura")
+                        
+                with col_info:
+                    st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
+                    st.markdown(f"🎟️ Posición en la cola de producción: <span style='color: #10b981; font-weight: bold;'>#{posicion_en_cola}</span>", unsafe_allow_html=True)
+                    st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Posición prenda:** {logo.get('posicion_logo', 'No especificada')}")
+                    if logo.get('tipo') == "Gorra":
+                        st.write(f"**Detalle Gorra:** {logo.get('ubicacion_gorra', 'N/A')} ({logo.get('detalle_gorra', 'N/A')})")
+                    st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
+                    st.write(f"**Archivos:** `📁 {logo.get('archivo', 'N/A')}`")
+                
+                estado_logo = logo.get('estado', 'Pendiente')
+                if estado_logo == "Pendiente":
+                    st.info(f"⏳ Estado: Recibido / Turno #{posicion_en_cola} en espera de inicio")
+                    col_mod, col_elim = st.columns(2)
+                    with col_mod:
+                        with st.popover("✏️ Modificar Orden"):
+                            with st.form(key=f"edit_form_{logo['id']}"):
+                                nuevo_nombre = st.text_input("Nuevo nombre", value=logo.get('nombre', ''))
+                                nueva_pos = st.selectbox("Nueva posición prenda", ["Pecho Izquierdo", "Pecho Derecho", "Centro Pecho", "Espalda Alta", "Espalda Centro", "Manga Izquierda", "Manga Derecha", "Gorra Frontal", "Gorra Lateral", "Gorra Trasera", "Otra posición"], index=0)
+                                nuevo_comentario = st.text_area("Nuevas notas", value=logo.get('comentario', ''))
+                                if st.form_submit_button("Guardar Cambios"):
+                                    logo['nombre'] = nuevo_nombre
+                                    logo['posicion_logo'] = nueva_pos
+                                    logo['comentario'] = nuevo_comentario
+                                    st.success("¡Modificado!")
+                                    st.rerun()
+                    with col_elim:
+                        if st.button("🗑️ Eliminar", key=f"del_{logo['id']}"):
+                            st.session_state.logos.remove(logo)
+                            st.warning("Orden eliminada.")
+                            st.rerun()
+                elif estado_logo == "En Progreso":
+                    st.markdown(
+                        f"""
+                        <div style="background-color: #d1fae5; border-left: 6px solid #10b981; padding: 10px; border-radius: 5px; color: #065f46; font-weight: bold;">
+                            🟢 ¡DIGITALIZANDO EN PROGRESO! (Tu turno #{posicion_en_cola} se está trabajando ahora mismo - Bloqueado para cambios)
+                        </div>
+                        """, 
+                        unsafe_allow_html=True
+                    )
+                
+                precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
+                st.write(f"Precio estimado: **{precio_mostrar}**")
+                st.divider()
+
+            # Filtrar exclusivamente los terminados para la sección de entregas
+            logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
+            
+            st.subheader("✅ Trabajos Realizados y Descargas")
+            if not logos_realizados:
+                st.info("Aún no tienes trabajos terminados listos para descarga.")
+            else:
+                for logo in logos_realizados:
+                    col_img, col_info = st.columns([1, 3])
+                    with col_img:
+                        if logo.get('imagen_obj') is not None:
+                            st.image(logo['imagen_obj'], caption="Diseño", width=100)
+                            with st.popover("🔍 Ver Grande"):
+                                st.image(logo['imagen_obj'], caption=f"Diseño Terminado: {logo.get('nombre')}", use_container_width=True)
+                        else:
+                            st.info("Sin miniatura")
+                            
+                    with col_info:
+                        st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
+                        st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Posición prenda:** {logo.get('posicion_logo', 'No especificada')}")
+                        st.write(f"**Notas:** {logo.get('comentario', 'Ninguno')}")
+                    
+                    st.success("✅ Estado: Digitalización Finalizada")
+                    
+                    if 'archivos_multiples' in logo and logo['archivos_multiples']:
+                        st.write("⬇️ **Descarga tus archivos listos:**")
+                        for idx, arch in enumerate(logo['archivos_multiples']):
+                            st.download_button(
+                                label=f"Descargar: {arch['nombre']}",
+                                data=arch['bytes'],
+                                file_name=arch['nombre'],
+                                mime="application/octet-stream",
+                                key=f"dl_multi_{logo['id']}_{idx}"
+                            )
+                    elif 'archivo_bordado_bytes' in logo and logo['archivo_bordado_bytes']:
+                        st.download_button(
+                            label=f"⬇️ Descargar Archivo Listo: {logo.get('archivo_bordado_nombre', 'bordado.dst')}",
+                            data=logo['archivo_bordado_bytes'],
+                            file_name=logo.get('archivo_bordado_nombre', 'bordado.dst'),
+                            mime="application/octet-stream",
+                            key=f"dl_{logo['id']}"
+                        )
+                    else:
+                        st.info("📁 Los archivos de bordado estarán disponibles para descarga en breve.")
+                    
+                    precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
+                    st.write(f"Precio final: **{precio_mostrar}** | Pago: **{logo.get('pago', 'Pendiente')}**")
+                    st.divider()
