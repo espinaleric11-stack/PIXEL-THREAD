@@ -295,6 +295,7 @@ elif modo == "Portal de Clientes":
         
         col_metrica, col_recibo = st.columns(2)
 
+        # --- CÁLCULO DINÁMICO E INSTANTÁNEO DEL TOTAL ACUMULADO ---
         with col_metrica:
             if "Dólares" in divisa:
                 total_cliente = sum(l.get('precio_usd', 5.0) for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado")
