@@ -62,9 +62,9 @@ if "logos" not in st.session_state:
         st.session_state.logos = datos_guardados["logos"]
     else:
         st.session_state.logos = [
-            {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "pago": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "posicion_trabajo": "Centro / Pecho estándar", "comentario": "Urgente", "archivo": "leon.png"},
-            {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "En Revisión", "pago": "Pendiente", "tipo": "Gorra", "ubicacion_gorra": "Frontal", "detalle_gorra": "3D (Puff)", "posicion_trabajo": "Centro / Pecho estándar", "comentario": "Centrado", "archivo": "cafe.png"},
-            {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Terminado", "pago": "Pagado", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "posicion_trabajo": "Centro / Pecho estándar", "comentario": "Ninguno", "archivo": "escudo.png"},
+            {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "pago": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "comentario": "Urgente", "archivo": "leon.png"},
+            {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "En Revisión", "pago": "Pendiente", "tipo": "Gorra", "ubicacion_gorra": "Frontal", "detalle_gorra": "3D (Puff)", "comentario": "Centrado", "archivo": "cafe.png"},
+            {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Terminado", "pago": "Pagado", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "comentario": "Ninguno", "archivo": "escudo.png"},
         ]
 
 if "recibos_pago" not in st.session_state:
@@ -199,9 +199,8 @@ if modo == "Panel Administrador (Tú)":
                     st.info("Sin miniatura")
 
             with col_info:
-                st.markdown(f"### 🔢 Cola #{idx_cola} - 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*")
+                st.markdown(f"### <span style='color: #22c55e;'>🔢 Cola #{idx_cola}</span> - 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*", unsafe_allow_html=True)
                 st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
-                st.write(f"**Posición en prenda:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
                 st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
                 st.write(f"**Archivo cliente:** `📁 {logo.get('archivo', 'Sin archivo')}`")
                 st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
@@ -268,7 +267,6 @@ if modo == "Panel Administrador (Tú)":
             with col_info:
                 st.markdown(f"### 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*")
                 st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
-                st.write(f"**Posición en prenda:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
                 st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
                 st.write(f"**Archivo cliente:** `📁 {logo.get('archivo', 'Sin archivo')}`")
                 st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
@@ -415,22 +413,6 @@ def render_portal_cliente(nombre_cliente):
                     detalle_gorra = st.radio("Selecciona el estilo:", ["3D (Puff)", "Plano (Flat)"], key=f"detalle_{nombre_cliente}")
                 else:
                     detalle_gorra = "Plano (Flat)"
-
-            posicion_trabajo = st.selectbox(
-                "Posición en la prenda para trabajar el logo:",
-                [
-                    "Centro / Pecho estándar",
-                    "Pecho izquierdo (Corazón)",
-                    "Pecho derecho",
-                    "Espalda superior (Ancha)",
-                    "Espalda centro",
-                    "Manga izquierda",
-                    "Manga derecha",
-                    "Cuello / Nuca",
-                    "Otro / Especificar en comentarios"
-                ],
-                key=f"posicion_{nombre_cliente}"
-            )
             
             comentario_cliente = st.text_area("Comentarios o instrucciones especiales", key=f"inp_com_{nombre_cliente}")
             
@@ -456,7 +438,6 @@ def render_portal_cliente(nombre_cliente):
                         "tipo": tipo_aplicacion,
                         "ubicacion_gorra": ubicacion_gorra,
                         "detalle_gorra": detalle_gorra,
-                        "posicion_trabajo": posicion_trabajo,
                         "comentario": comentario_cliente if comentario_cliente else "Ninguno",
                         "archivo": nombre_archivo,
                         "imagen_bytes": img_bytes_guardar
@@ -501,9 +482,8 @@ def render_portal_cliente(nombre_cliente):
                 st.info("Sin miniatura")
                 
         with col_info:
-            st.markdown(f"### 🔢 Posición en Cola: #{posicion_en_cola} — 🧵 {logo.get('nombre', 'Logo')}")
+            st.markdown(f"### <span style='color: #22c55e;'>🔢 Posición en Cola: #{posicion_en_cola}</span> — 🧵 {logo.get('nombre', 'Logo')}", unsafe_allow_html=True)
             st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
-            st.write(f"**Posición en prenda:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
             st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
             st.write(f"**Archivos:** `📁 {logo.get('archivo', 'N/A')}`")
         
@@ -564,7 +544,6 @@ def render_portal_cliente(nombre_cliente):
             with col_info:
                 st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
                 st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
-                st.write(f"**Posición en prenda:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
                 st.write(f"**Notas:** {logo.get('comentario', 'Ninguno')}")
             
             st.success("✅ Estado: Digitalización Finalizada")
