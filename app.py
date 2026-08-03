@@ -78,27 +78,6 @@ if modo == "Panel Administrador (Tú)":
 
         st.write("Administra el flujo de trabajo industrial, el estado de pagos y la entrega de archivos de bordado.")
 
-        # --- SISTEMA DE ALERTAS VISUALES EN TIEMPO REAL ---
-        recibos_pendientes_count = len(st.session_state.recibos_pago)
-        nuevos_logos_count = len([l for l in st.session_state.logos if l.get('estado', 'Pendiente') == "Pendiente"])
-        
-        if recibos_pendientes_count > 0 or nuevos_logos_count > 0:
-            alerta_textos = []
-            if recibos_pendientes_count > 0:
-                alerta_textos.append(f"🧾 Hay **{recibos_pendientes_count}** comprobante(s) de pago nuevo(s) para revisar.")
-            if nuevos_logos_count > 0:
-                alerta_textos.append(f"⏳ Hay **{nuevos_logos_count}** logo(s) en cola pendientes de iniciar.")
-            
-            st.markdown(
-                f"""
-                <div style="background-color: #fef3c7; border-left: 6px solid #f59e0b; padding: 12px; border-radius: 5px; color: #92400e; margin-bottom: 20px;">
-                    <strong>🔔 Atención Requerida:</strong><br>
-                    {"<br>".join(alerta_textos)}
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
         # --- CONTADORES DE LOGOS Y MÉTRICAS FINANCIERAS ---
         logos_activos_admin = [l for l in st.session_state.logos if l.get('estado') != "Archivado/Pagado"]
         logos_por_hacer_count = len([l for l in logos_activos_admin if l.get('estado', 'Pendiente') != "Terminado"])
@@ -110,8 +89,8 @@ if modo == "Panel Administrador (Tú)":
         c_m1, c_m2, c_m3, c_m4 = st.columns(4)
         c_m1.metric("⏳ Logos por Hacer", logos_por_hacer_count)
         c_m2.metric("✅ Logos Terminados", logos_terminados_count)
-        c_m3.metric("Total Acumulado (USD)", f"${total_usd:.2f} USD")
-        c_m4.metric("Total Acumulado (DOP)", f"RD$ {total_dop:,.2f}")
+        c_m3.metric("Cobrados (USD)", f"${total_usd:.2f} USD")
+        c_m4.metric("Cobrados (DOP)", f"RD$ {total_dop:,.2f}")
 
         st.divider()
 
@@ -163,7 +142,9 @@ if modo == "Panel Administrador (Tú)":
                             st.rerun()
                     with c_btn2:
                         if st.button(f"🗑️ Eliminar Usuario", key=f"del_user_{cli}"):
+                            # Eliminar al cliente de la lista de registrados
                             del st.session_state.clientes_registrados[cli]
+                            # Opcional: limpiar recibos de pago si tuviera
                             if cli in st.session_state.recibos_pago:
                                 del st.session_state.recibos_pago[cli]
                             st.warning(f"¡Usuario '{cli}' eliminado correctamente!")
@@ -176,7 +157,6 @@ if modo == "Panel Administrador (Tú)":
             if st.session_state.recibos_pago:
                 for cli, recibo_info in st.session_state.recibos_pago.items():
                     with st.expander(f"📥 Ver Recibo de Pago de: {cli} ({recibo_info['nombre_archivo']})"):
-                        st.image(recibo_info['bytes'], caption=f"Comprobante de {cli}", width=300)
                         st.download_button(
                             label=f"Descargar comprobante de {cli}",
                             data=recibo_info['bytes'],
@@ -204,8 +184,6 @@ if modo == "Panel Administrador (Tú)":
                 with col_img:
                     if logo.get('imagen_obj') is not None:
                         st.image(logo['imagen_obj'], caption="Diseño Original", width=100)
-                        with st.popover("🔍 Ver Grande"):
-                            st.image(logo['imagen_obj'], caption=f"Diseño: {logo.get('nombre')}", use_container_width=True)
                     else:
                         st.info("Sin miniatura")
 
@@ -402,8 +380,6 @@ elif modo == "Portal de Clientes":
             with col_img:
                 if logo.get('imagen_obj') is not None:
                     st.image(logo['imagen_obj'], caption="Tu Diseño", width=100)
-                    with st.popover("🔍 Ver Grande"):
-                        st.image(logo['imagen_obj'], caption=f"Tu Diseño: {logo.get('nombre')}", use_container_width=True)
                 else:
                     st.info("Sin miniatura")
                     
@@ -459,8 +435,6 @@ elif modo == "Portal de Clientes":
                 with col_img:
                     if logo.get('imagen_obj') is not None:
                         st.image(logo['imagen_obj'], caption="Diseño", width=100)
-                        with st.popover("🔍 Ver Grande"):
-                            st.image(logo['imagen_obj'], caption=f"Diseño Terminado: {logo.get('nombre')}", use_container_width=True)
                     else:
                         st.info("Sin miniatura")
                         
