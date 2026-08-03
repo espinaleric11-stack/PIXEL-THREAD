@@ -453,8 +453,11 @@ elif modo == "Portal de Clientes":
             st.divider()
 
         logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
-        if logos_realizados:
-            st.subheader("✅ Trabajos Realizados y Descargas")
+        
+        st.subheader("✅ Trabajos Realizados y Descargas")
+        if not logos_realizados:
+            st.info("Aún no tienes trabajos terminados listos para descarga.")
+        else:
             for logo in logos_realizados:
                 col_img, col_info = st.columns([1, 3])
                 with col_img:
