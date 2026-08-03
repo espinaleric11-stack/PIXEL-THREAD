@@ -199,7 +199,7 @@ if modo == "Panel Administrador (Tú)":
                     st.info("Sin miniatura")
 
             with col_info:
-                st.markdown(f"### <span style='color: #22c55e;'>🔢 Cola #{idx_cola}</span> - 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*", unsafe_allow_html=True)
+                st.markdown(f"### <span style='color: #22c55e;'>🔢 Cola #<span style='color: #22c55e;'>{idx_cola}</span></span> - 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*", unsafe_allow_html=True)
                 st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
                 st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
                 st.write(f"**Archivo cliente:** `📁 {logo.get('archivo', 'Sin archivo')}`")
@@ -375,7 +375,7 @@ def render_portal_cliente(nombre_cliente):
 
     st.divider()
 
-    with st.expander("➕ Enviar un Nuevo Logo a Digitalizar", expanded=not st.session_state.form_enviado):
+    with st.expander("➕ Enviar un Nuevo Logo a Digitalizar", expanded=False):
         if st.session_state.form_enviado:
             st.success("✅ ¡ORDEN AGREGADA CORRECTAMENTE!")
             if st.button("Enviar otro diseño", key=f"otro_{nombre_cliente}"):
