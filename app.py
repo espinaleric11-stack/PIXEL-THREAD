@@ -7,22 +7,20 @@ st.set_page_config(page_title="Pixel Thread - Portal Profesional", layout="cente
 # --- ACTUALIZACIÓN AUTOMÁTICA CADA 2 SEGUNDOS ---
 st_autorefresh(interval=2000, limit=None, key="autorefresh_global")
 
-# --- INICIALIZAR LISTA DE CLIENTES Y DIVISAS ---
+# --- INICIALIZAR ESTADO PERSISTENTE ---
 if "clientes_registrados" not in st.session_state:
     st.session_state.clientes_registrados = {
         "Cliente A": "Dólares (USD - $)",
         "Cliente B": "Pesos Dominicanos (DOP - RD$)"
     }
 
-# --- CONTROL DE SESIÓN DE CLIENTE Y ADMINISTRADOR ---
 if "cliente_logeado" not in st.session_state:
     st.session_state.cliente_logeado = None
 
 if "admin_logeado" not in st.session_state:
     st.session_state.admin_logeado = False
 
-# --- INICIALIZAR DATOS GLOBALES EN LA SESIÓN ---
-if "logos" not in st.session_state or not st.session_state.logos or "pago" not in st.session_state.logos[0]:
+if "logos" not in st.session_state:
     st.session_state.logos = [
         {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "pago": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "posicion_logo": "Pecho Izquierdo", "comentario": "Urgente", "archivo": "leon.png", "imagen_obj": None},
         {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "En Progreso", "pago": "Pendiente", "tipo": "Gorra", "ubicacion_gorra": "Frontal", "detalle_gorra": "3D (Puff)", "posicion_logo": "Frontal", "comentario": "Centrado", "archivo": "cafe.png", "imagen_obj": None},
@@ -187,7 +185,10 @@ if modo == "Panel Administrador (Tú)":
         st.subheader("📋 Gestión de Trabajos")
 
         for logo in logos_ordenados_admin:
-            i = st.session_state.logos.index(logo)
+            # Buscar el índice actual dinámicamente usando el ID único para evitar desfases
+            i = next((idx for idx, item in enumerate(st.session_state.logos) if item["id"] == logo["id"]), None)
+            if i is None:
+                continue
             
             with st.container():
                 col_img, col_info = st.columns([1, 3])
@@ -389,7 +390,6 @@ elif modo == "Portal de Clientes":
         contenedor_dinamico = st.container()
 
         with contenedor_dinamico:
-            # Filtrar exclusivamente los que NO están terminados para la sección de pendientes
             logos_por_realizar = [l for l in logos_cliente if l.get('estado') not in ["Terminado", "Archivado/Pagado"]]
             
             st.subheader("⏳ Trabajos por Realizar y Turno en Cola")
@@ -457,7 +457,6 @@ elif modo == "Portal de Clientes":
                 st.write(f"Precio estimado: **{precio_mostrar}**")
                 st.divider()
 
-            # Filtrar exclusivamente los terminados para la sección de entregas
             logos_realizados = [l for l in logos_cliente if l.get('estado') == "Terminado"]
             
             st.subheader("✅ Trabajos Realizados y Descargas")
