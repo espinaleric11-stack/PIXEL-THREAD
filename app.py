@@ -8,6 +8,74 @@ import io
 
 st.set_page_config(page_title="Pixel Thread - Portal Profesional", layout="centered")
 
+# --- ESTILOS CSS PERSONALIZADOS (TEMA FUTURISTA / CYBERPUNK) ---
+st.markdown("""
+    <style>
+    .stApp {
+        background: linear-gradient(135deg, #0a0f1d 0%, #111827 50%, #1f1128 100%);
+        color: #e2e8f0;
+    }
+    
+    /* Fondo con marca de agua gigante en una esquina */
+    .stApp::before {
+        content: "PIXEL THREAD";
+        position: fixed;
+        bottom: -50px;
+        right: -50px;
+        font-size: 15vw;
+        font-weight: 900;
+        color: rgba(0, 255, 204, 0.03);
+        z-index: 0;
+        pointer-events: none;
+        white-space: nowrap;
+        letter-spacing: -5px;
+    }
+
+    /* Tarjetas y contenedores con toque futurista */
+    div[data-testid="stExpander"], div.stContainer, div[data-testid="stVerticalBlock"] > div > div.element-container {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Métricas futuristas */
+    div[data-testid="stMetric"] {
+        background: rgba(17, 24, 39, 0.7);
+        border: 1px solid rgba(0, 255, 204, 0.2);
+        padding: 15px;
+        border-radius: 12px;
+        box-shadow: 0 0 15px rgba(0, 255, 204, 0.05);
+    }
+    div[data-testid="stMetric"] label {
+        color: #94a3b8 !important;
+    }
+    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+        color: #00ffcc !important;
+        text-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
+    }
+
+    /* Botones estilo neón futurista */
+    .stButton>button {
+        background: linear-gradient(90deg, #00ffcc 0%, #0077ff 100%);
+        color: #0a0f1d;
+        font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        box-shadow: 0 0 20px rgba(0, 255, 204, 0.6);
+        transform: translateY(-2px);
+    }
+
+    /* Sidebar futurista */
+    section[data-testid="stSidebar"] {
+        background-color: #070a14;
+        border-right: 1px solid rgba(0, 255, 204, 0.1);
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # --- ARCHIVO DE PERSISTENCIA LOCAL ---
 DB_FILE = "datos_pixel_thread.json"
 
@@ -199,7 +267,7 @@ if modo == "Panel Administrador (Tú)":
                     st.info("Sin miniatura")
 
             with col_info:
-                st.markdown(f"### <span style='color: #22c55e;'>🔢 Cola #<span style='color: #22c55e;'>{idx_cola}</span></span> - 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*", unsafe_allow_html=True)
+                st.markdown(f"### <span style='color: #00ffcc;'>🔢 Cola #<span style='color: #00ffcc;'>{idx_cola}</span></span> - 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*", unsafe_allow_html=True)
                 st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
                 st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
                 st.write(f"**Archivo cliente:** `📁 {logo.get('archivo', 'Sin archivo')}`")
@@ -485,7 +553,7 @@ def render_portal_cliente(nombre_cliente):
                 st.info("Sin miniatura")
                 
         with col_info:
-            st.markdown(f"### <span style='color: #22c55e;'>🔢 Posición en Cola: #{posicion_en_cola}</span> — 🧵 {logo.get('nombre', 'Logo')}", unsafe_allow_html=True)
+            st.markdown(f"### <span style='color: #00ffcc;'>🔢 Posición en Cola: #{posicion_en_cola}</span> — 🧵 {logo.get('nombre', 'Logo')}", unsafe_allow_html=True)
             st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
             st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
             st.write(f"**Archivos:** `📁 {logo.get('archivo', 'N/A')}`")
@@ -516,7 +584,7 @@ def render_portal_cliente(nombre_cliente):
         elif estado_logo == "En Progreso":
             st.markdown(
                 """
-                <div style="background-color: #d1fae5; border-left: 6px solid #10b981; padding: 10px; border-radius: 5px; color: #065f46; font-weight: bold;">
+                <div style="background-color: #064e3b; border-left: 6px solid #00ffcc; padding: 10px; border-radius: 5px; color: #a7f3d0; font-weight: bold;">
                     🟢 ¡DIGITALIZANDO EN PROGRESO! (Bloqueado para cambios)
                 </div>
                 """, 
