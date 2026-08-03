@@ -25,7 +25,6 @@ def guardar_datos():
         for l in st.session_state.get("logos", []):
             logo_copy = {}
             for k, v in l.items():
-                # Omitimos objetos binarios o de imagen que no son serializables a JSON
                 if k in ["imagen_obj", "archivo_bordado_bytes", "archivos_multiples"]:
                     if k == "archivos_multiples" and isinstance(v, list):
                         logo_copy[k] = [{"nombre": arch.get("nombre")} for arch in v if isinstance(arch, dict)]
@@ -89,12 +88,12 @@ if modo == "Panel Administrador (Tú)":
     st.title("🎛️ Panel de Control - Pixel Thread")
     st.write("Administra el flujo de trabajo industrial, el estado de pagos y la entrega de archivos de bordado (.DST/.EMB/.PDF).")
 
-    total_usd = sum(l.get('precio_usd', 5.0) for l in st.session_state.logos if l.get('pago', 'Pendiente') == "Pagado")
-    total_dop = sum(l.get('precio_dop', 300.0) for l in st.session_state.logos if l.get('pago', 'Pendiente') == "Pagado")
+    total_usd = sum(l.get('precio_usd', 5.0) for l in st.session_state.logos if l.get('estado', 'Pendiente') == "Terminado" and l.get('estado') != "Archivado/Pagado")
+    total_dop = sum(l.get('precio_dop', 300.0) for l in st.session_state.logos if l.get('estado', 'Pendiente') == "Terminado" and l.get('estado') != "Archivado/Pagado")
     
     col1, col2 = st.columns(2)
-    col1.metric("Ingresos Cobrados (USD)", f"${total_usd:.2f} USD")
-    col2.metric("Ingresos Cobrados (DOP)", f"RD$ {total_dop:,.2f}")
+    col1.metric("Total Acumulado (Semana)", f"${total_usd:.2f} USD")
+    col2.metric("Total Acumulado (Semana)", f"RD$ {total_dop:,.2f}")
 
     st.divider()
 
