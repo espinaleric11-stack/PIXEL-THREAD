@@ -94,66 +94,69 @@ if modo == "Panel Administrador (Tú)":
 
         st.divider()
 
-        # --- SECCIÓN PRINCIPAL: AGREGAR NUEVOS CLIENTES ---
-        st.subheader("➕ Registrar Nuevo Cliente y su Moneda")
-        with st.form(key="form_nuevo_cliente"):
-            col_nc1, col_nc2 = st.columns(2)
-            with col_nc1:
-                nuevo_nombre_cli = st.text_input("Nombre de Usuario / Cliente")
-            with col_nc2:
-                nueva_divisa_cli = st.selectbox("Moneda Principal", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"])
+        # --- BARRA DESPLEGABLE CON LAS SECCIONES DE GESTIÓN DE CLIENTES Y RECIBOS ---
+        with st.expander("⚙️ Panel de Gestión: Clientes, Cierre de Ciclos y Recibos", expanded=False):
             
-            btn_crear_cli = st.form_submit_button("Registrar Cliente")
-            if btn_crear_cli:
-                if nuevo_nombre_cli:
-                    usuario_limpio = nuevo_nombre_cli.strip()
-                    if usuario_limpio in st.session_state.clientes_registrados:
-                        st.error("¡Este usuario ya está registrado!")
+            # --- SECCIÓN: AGREGAR NUEVOS CLIENTES ---
+            st.subheader("➕ Registrar Nuevo Cliente y su Moneda")
+            with st.form(key="form_nuevo_cliente"):
+                col_nc1, col_nc2 = st.columns(2)
+                with col_nc1:
+                    nuevo_nombre_cli = st.text_input("Nombre de Usuario / Cliente")
+                with col_nc2:
+                    nueva_divisa_cli = st.selectbox("Moneda Principal", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"])
+                
+                btn_crear_cli = st.form_submit_button("Registrar Cliente")
+                if btn_crear_cli:
+                    if nuevo_nombre_cli:
+                        usuario_limpio = nuevo_nombre_cli.strip()
+                        if usuario_limpio in st.session_state.clientes_registrados:
+                            st.error("¡Este usuario ya está registrado!")
+                        else:
+                            st.session_state.clientes_registrados[usuario_limpio] = nueva_divisa_cli
+                            st.success(f"¡Cliente '{usuario_limpio}' registrado con éxito y habilitado para entrar!")
+                            st.rerun()
                     else:
-                        st.session_state.clientes_registrados[usuario_limpio] = nueva_divisa_cli
-                        st.success(f"¡Cliente '{usuario_limpio}' registrado con éxito y habilitado para entrar!")
-                        st.rerun()
-                else:
-                    st.error("Por favor, ingresa un nombre para el cliente.")
+                        st.error("Por favor, ingresa un nombre para el cliente.")
 
-        st.divider()
+            st.divider()
 
-        # --- SECCIÓN DE CONTROL Y REINICIO POR CLIENTE ---
-        st.subheader("👥 Control y Cierre de Ciclo por Cliente")
-        for cli in st.session_state.clientes_registrados.keys():
-            logos_cli_term = [l for l in st.session_state.logos if l.get('cliente') == cli and l.get('estado', 'Pendiente') == "Terminado"]
-            sub_usd = sum(l.get('precio_usd', 5.0) for l in logos_cli_term)
-            sub_dop = sum(l.get('precio_dop', 300.0) for l in logos_cli_term)
-            
-            with st.expander(f"👤 Cliente: {cli} — Acumulado Terminado: ${sub_usd:.2f} USD / RD$ {sub_dop:,.2f}"):
-                c_info, c_btn = st.columns([2, 1])
-                with c_info:
-                    st.write(f"Trabajos terminados pendientes de cerrar ciclo: **{len(logos_cli_term)}**")
-                with c_btn:
-                    if st.button(f"🔄 Reiniciar Ciclo de {cli}", key=f"reset_cli_{cli}"):
-                        for logo in st.session_state.logos:
-                            if logo.get('cliente') == cli and logo.get('estado', 'Pendiente') == "Terminado":
-                                logo['pago'] = "Pagado"
-                                logo['estado'] = "Archivado/Pagado"
-                        st.success(f"¡Ciclo de {cli} reiniciado con éxito!")
-                        st.rerun()
+            # --- SECCIÓN: CONTROL Y REINICIO POR CLIENTE ---
+            st.subheader("👥 Control y Cierre de Ciclo por Cliente")
+            for cli in st.session_state.clientes_registrados.keys():
+                logos_cli_term = [l for l in st.session_state.logos if l.get('cliente') == cli and l.get('estado', 'Pendiente') == "Terminado"]
+                sub_usd = sum(l.get('precio_usd', 5.0) for l in logos_cli_term)
+                sub_dop = sum(l.get('precio_dop', 300.0) for l in logos_cli_term)
+                
+                with st.expander(f"👤 Cliente: {cli} — Acumulado Terminado: ${sub_usd:.2f} USD / RD$ {sub_dop:,.2f}"):
+                    c_info, c_btn = st.columns([2, 1])
+                    with c_info:
+                        st.write(f"Trabajos terminados pendientes de cerrar ciclo: **{len(logos_cli_term)}**")
+                    with c_btn:
+                        if st.button(f"🔄 Reiniciar Ciclo de {cli}", key=f"reset_cli_{cli}"):
+                            for logo in st.session_state.logos:
+                                if logo.get('cliente') == cli and logo.get('estado', 'Pendiente') == "Terminado":
+                                    logo['pago'] = "Pagado"
+                                    logo['estado'] = "Archivado/Pagado"
+                            st.success(f"¡Ciclo de {cli} reiniciado con éxito!")
+                            st.rerun()
 
-        st.divider()
+            st.divider()
 
-        # --- SECCIÓN DE RECIBOS DE PAGO ENVIADOS POR CLIENTES ---
-        st.subheader("🧾 Recibos de Pago Subidos por Clientes")
-        if st.session_state.recibos_pago:
-            for cli, recibo_info in st.session_state.recibos_pago.items():
-                with st.expander(f"📥 Ver Recibo de Pago de: {cli} ({recibo_info['nombre_archivo']})"):
-                    st.download_button(
-                        label=f"Descargar comprobante de {cli}",
-                        data=recibo_info['bytes'],
-                        file_name=recibo_info['nombre_archivo'],
-                        mime="application/octet-stream",
-                        key=f"dl_recibo_{cli}"
-                    )
-        else:
-            st.info("No hay recibos de pago subidos por los clientes todavía.")
+            # --- SECCIÓN: RECIBOS DE PAGO ENVIADOS POR CLIENTES ---
+            st.subheader("🧾 Recibos de Pago Subidos por Clientes")
+            if st.session_state.recibos_pago:
+                for cli, recibo_info in st.session_state.recibos_pago.items():
+                    with st.expander(f"📥 Ver Recibo de Pago de: {cli} ({recibo_info['nombre_archivo']})"):
+                        st.download_button(
+                            label=f"Descargar comprobante de {cli}",
+                            data=recibo_info['bytes'],
+                            file_name=recibo_info['nombre_archivo'],
+                            mime="application/octet-stream",
+                            key=f"dl_recibo_{cli}"
+                        )
+            else:
+                st.info("No hay recibos de pago subidos por los clientes todavía.")
 
         st.divider()
 
@@ -225,7 +228,7 @@ elif modo == "Portal de Clientes":
     
     if st.session_state.cliente_logeado is None:
         st.title("👤 Portal de Clientes - Pixel Thread")
-        st.write("Ingresa tu nombre de usuario autorizado para acceder a tu portal:")
+        st.write("Ingresa tu nombre de usuario autorizado para acceder à tu portal:")
         
         with st.form(key="form_login_cliente"):
             usuario_ingresado = st.text_input("Tu Nombre de Usuario")
