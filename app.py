@@ -273,17 +273,13 @@ elif modo == "Portal de Clientes":
     else:
         nombre_cliente = st.session_state.cliente_logeado
         
-        col_title, col_logout, col_refresh = st.columns([2, 1, 1])
+        col_title, col_logout = st.columns([3, 1])
         with col_title:
             st.title(f"👤 Portal Privado de: {nombre_cliente}")
         with col_logout:
             st.write("")
             if st.button("🚪 Salir"):
                 st.session_state.cliente_logeado = None
-                st.rerun()
-        with col_refresh:
-            st.write("")
-            if st.button("🔄 Actualizar"):
                 st.rerun()
 
         st.write("Gestiona tus solicitudes de bordado y descarga tus archivos finalizados de manera segura.")
