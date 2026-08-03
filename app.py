@@ -48,7 +48,6 @@ st.sidebar.caption("🔄 Actualización automática activa (cada 2 seg)")
 # ==========================================
 if modo == "Panel Administrador (Tú)":
     
-    # Control de Autenticación del Administrador
     if not st.session_state.admin_logeado:
         st.title("🔐 Acceso Restringido - Panel Administrador")
         st.write("Introduce tu usuario de administrador autorizado para continuar:")
@@ -66,7 +65,6 @@ if modo == "Panel Administrador (Tú)":
                     st.error("❌ Usuario de administrador incorrecto.")
     
     else:
-        # Cabecera con opción de cerrar sesión de admin
         col_tadmin, col_btadmin = st.columns([3, 1])
         with col_tadmin:
             st.title("🎛️ Panel de Control - Pixel Thread")
@@ -78,7 +76,6 @@ if modo == "Panel Administrador (Tú)":
 
         st.write("Administra el flujo de trabajo industrial, el estado de pagos y la entrega de archivos de bordado.")
 
-        # --- SISTEMA DE ALERTAS VISUALES EN TIEMPO REAL ---
         recibos_pendientes_count = len(st.session_state.recibos_pago)
         nuevos_logos_count = len([l for l in st.session_state.logos if l.get('estado', 'Pendiente') == "Pendiente"])
         
@@ -99,7 +96,6 @@ if modo == "Panel Administrador (Tú)":
                 unsafe_allow_html=True
             )
 
-        # --- CONTADORES DE LOGOS Y MÉTRICAS FINANCIERAS ---
         logos_activos_admin = [l for l in st.session_state.logos if l.get('estado') != "Archivado/Pagado"]
         logos_por_hacer_count = len([l for l in logos_activos_admin if l.get('estado', 'Pendiente') != "Terminado"])
         logos_terminados_count = len([l for l in logos_activos_admin if l.get('estado', 'Pendiente') == "Terminado"])
@@ -115,10 +111,7 @@ if modo == "Panel Administrador (Tú)":
 
         st.divider()
 
-        # --- BARRA DESPLEGABLE CON LAS SECCIONES DE GESTIÓN DE CLIENTES Y RECIBOS ---
         with st.expander("⚙️ Panel de Gestión: Clientes, Cierre de Ciclos y Recibos", expanded=False):
-            
-            # --- SECCIÓN: AGREGAR NUEVOS CLIENTES ---
             st.subheader("➕ Registrar Nuevo Cliente y su Moneda")
             with st.form(key="form_nuevo_cliente"):
                 col_nc1, col_nc2 = st.columns(2)
@@ -142,7 +135,6 @@ if modo == "Panel Administrador (Tú)":
 
             st.divider()
 
-            # --- SECCIÓN: CONTROL, REINICIO Y ELIMINACIÓN POR CLIENTE ---
             st.subheader("👥 Control, Cierre de Ciclo y Eliminación por Cliente")
             for cli in list(st.session_state.clientes_registrados.keys()):
                 logos_cli_term = [l for l in st.session_state.logos if l.get('cliente') == cli and l.get('estado', 'Pendiente') == "Terminado"]
@@ -171,7 +163,6 @@ if modo == "Panel Administrador (Tú)":
 
             st.divider()
 
-            # --- SECCIÓN: RECIBOS DE PAGO ENVIADOS POR CLIENTES ---
             st.subheader("🧾 Recibos de Pago Subidos por Clientes")
             if st.session_state.recibos_pago:
                 for cli, recibo_info in st.session_state.recibos_pago.items():
@@ -211,7 +202,7 @@ if modo == "Panel Administrador (Tú)":
 
                 with col_info:
                     st.markdown(f"### 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*")
-                    st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Posición:** {logo.get('posicion_logo', 'No especificada')} | **Ubicación Gorra:** {logo.get('ubicacion_gorra', 'N/A')} ({logo.get('detalle_gorra', 'N/A')})")
+                    st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Posición:** {logo.get('posicion_logo', 'No especificada')} | **Estado Actual:** `{logo.get('estado', 'Pendiente')}`")
                     st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
                     st.write(f"**Archivo cliente:** `📁 {logo.get('archivo', 'Sin archivo')}`")
                     st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
@@ -277,13 +268,17 @@ elif modo == "Portal de Clientes":
     else:
         nombre_cliente = st.session_state.cliente_logeado
         
-        col_title, col_logout = st.columns([3, 1])
+        col_title, col_logout, col_refresh = st.columns([2, 1, 1])
         with col_title:
             st.title(f"👤 Portal Privado de: {nombre_cliente}")
         with col_logout:
             st.write("")
-            if st.button("🚪 Cerrar Sesión"):
+            if st.button("🚪 Salir"):
                 st.session_state.cliente_logeado = None
+                st.rerun()
+        with col_refresh:
+            st.write("")
+            if st.button("🔄 Actualizar"):
                 st.rerun()
 
         st.write("Gestiona tus solicitudes de bordado y descarga tus archivos finalizados de manera segura.")
@@ -295,7 +290,6 @@ elif modo == "Portal de Clientes":
         
         col_metrica, col_recibo = st.columns(2)
 
-        # --- CÁLCULO DINÁMICO E INSTANTÁNEO DEL TOTAL ACUMULADO ---
         with col_metrica:
             if "Dólares" in divisa:
                 total_cliente = sum(l.get('precio_usd', 5.0) for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado")
@@ -385,6 +379,7 @@ elif modo == "Portal de Clientes":
                     else:
                         st.error("Por favor, ingresa un nombre para el logo.")
 
+        # Filtrar exclusivamente los que NO están terminados para la sección de pendientes
         logos_por_realizar = [l for l in logos_cliente if l.get('estado', 'Pendiente') != "Terminado"]
         
         st.subheader("⏳ Trabajos por Realizar y Turno en Cola")
@@ -452,6 +447,7 @@ elif modo == "Portal de Clientes":
             st.write(f"Precio estimado: **{precio_mostrar}**")
             st.divider()
 
+        # Filtrar exclusivamente los terminados para la sección de entregas
         logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
         
         st.subheader("✅ Trabajos Realizados y Descargas")
