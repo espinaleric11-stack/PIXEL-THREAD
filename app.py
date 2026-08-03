@@ -16,24 +16,6 @@ st.markdown("""
         color: #e2e8f0;
     }
     
-    /* Fondo con el logo integrado en la esquina inferior derecha en grande y translúcido (Usando una imagen estable de respaldo o CSS puro si falla la URL externa) */
-    .stApp::before {
-        content: "";
-        position: fixed;
-        bottom: -20px;
-        right: -20px;
-        width: 35vw;
-        height: 35vw;
-        max-width: 450px;
-        max-height: 450px;
-        background-size: contain;
-        background-repeat: no-repeat;
-        background-position: bottom right;
-        opacity: 0.05;
-        z-index: 0;
-        pointer-events: none;
-    }
-
     div[data-testid="stExpander"], div.stContainer, div[data-testid="stVerticalBlock"] > div > div.element-container {
         position: relative;
         z-index: 1;
@@ -100,8 +82,20 @@ def guardar_datos():
                 logo_copy[k] = v
             logos_limpios.append(logo_copy)
 
+        # Limpiar avatares de clientes si tienen bytes guardados directamente para el JSON
+        clientes_limpios = {}
+        for cli, info in st.session_state.get("clientes_registrados", {}).items():
+            if isinstance(info, dict):
+                clientes_limpios[cli] = {
+                    "divisa": info.get("divisa", "Dólares (USD - $)"),
+                    "avatar_nombre": info.get("avatar_nombre", None)
+                    # Los bytes se quedan en session_state pero no se escriben crudos al JSON para evitar corrupción
+                }
+            else:
+                clientes_limpios[cli] = {"divisa": info, "avatar_bytes": None, "avatar_nombre": None}
+
         datos = {
-            "clientes_registrados": st.session_state.get("clientes_registrados", {}),
+            "clientes_registrados": clientes_limpios,
             "logos": logos_limpios
         }
         with open(DB_FILE, "w", encoding="utf-8") as f:
@@ -120,9 +114,14 @@ if "clientes_registrados" not in st.session_state:
         st.session_state.clientes_registrados = datos_guardados["clientes_registrados"]
     else:
         st.session_state.clientes_registrados = {
-            "Cliente A": "Dólares (USD - $)",
-            "Cliente B": "Pesos Dominicanos (DOP - RD$)"
+            "Cliente A": {"divisa": "Dólares (USD - $)", "avatar_bytes": None, "avatar_nombre": None},
+            "Cliente B": {"divisa": "Pesos Dominicanos (DOP - RD$)", "avatar_bytes": None, "avatar_nombre": None}
         }
+else:
+    # Asegurar formato dict para clientes existentes
+    for cli, val in list(st.session_state.clientes_registrados.items()):
+        if not isinstance(val, dict):
+            st.session_state.clientes_registrados[cli] = {"divisa": val, "avatar_bytes": None, "avatar_nombre": None}
 
 if "logos" not in st.session_state:
     if datos_guardados and "logos" in datos_guardados:
@@ -171,8 +170,9 @@ if modo == "Panel Administrador (Tú)":
             col_nc1, col_nc2 = st.columns(2)
             with col_nc1:
                 nuevo_nombre_cli = st.text_input("Nombre del Cliente o Empresa")
-            with col_nc2:
                 nueva_divisa_cli = st.selectbox("Moneda Principal / Divisa", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"])
+            with col_nc2:
+                avatar_nuevo_file = st.file_uploader("Logo / Avatar del Cliente (Opcional)", type=["png", "jpg", "jpeg"])
             
             btn_crear_cli = st.form_submit_button("Registrar Cliente")
             if btn_crear_cli:
@@ -180,7 +180,14 @@ if modo == "Panel Administrador (Tú)":
                     if nuevo_nombre_cli in st.session_state.clientes_registrados:
                         st.error("¡Este cliente ya está registrado!")
                     else:
-                        st.session_state.clientes_registrados[nuevo_nombre_cli] = nueva_divisa_cli
+                        avatar_bytes_val = avatar_nuevo_file.getvalue() if avatar_nuevo_file else None
+                        avatar_nombre_val = avatar_nuevo_file.name if avatar_nuevo_file else None
+
+                        st.session_state.clientes_registrados[nuevo_nombre_cli] = {
+                            "divisa": nueva_divisa_cli,
+                            "avatar_bytes": avatar_bytes_val,
+                            "avatar_nombre": avatar_nombre_val
+                        }
                         guardar_datos()
                         st.success(f"¡Cliente '{nuevo_nombre_cli}' agregado con éxito! Ya aparece en el menú lateral.")
                         st.rerun()
@@ -407,10 +414,31 @@ if modo == "Panel Administrador (Tú)":
 # FUNCIÓN GENÉRICA PARA EL PORTAL DE CLIENTES
 # ==========================================
 def render_portal_cliente(nombre_cliente):
-    st.title(f"👤 Portal de Cliente: {nombre_cliente}")
+    info_cliente = st.session_state.clientes_registrados.get(nombre_cliente, {"divisa": "Dólares (USD - $)", "avatar_bytes": None})
+    if isinstance(info_cliente, dict):
+        divisa_default = info_cliente.get("divisa", "Dólares (USD - $)")
+        avatar_bytes = info_cliente.get("avatar_bytes", None)
+    else:
+        divisa_default = info_cliente
+        avatar_bytes = None
+
+    # Cabecera con imagen de perfil o ícono por defecto si no tiene logo
+    col_av, col_tit = st.columns([1, 12])
+    with col_av:
+        if avatar_bytes:
+            try:
+                img_avatar = Image.open(io.BytesIO(avatar_bytes))
+                st.image(img_avatar, width=55)
+            except Exception:
+                st.markdown("👤")
+        else:
+            st.markdown("👤")
+            
+    with col_tit:
+        st.title(f"Portal de Cliente: {nombre_cliente}")
+
     st.write("Bienvenido a Pixel Thread. Gestiona tus solicitudes y descarga tus archivos de bordado digitalizados.")
     
-    divisa_default = st.session_state.clientes_registrados.get(nombre_cliente, "Dólares (USD - $)")
     divisa = st.radio("Selecciona tu moneda:", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"], index=0 if "Dólares" in divisa_default else 1, horizontal=True, key=f"divisa_{nombre_cliente}")
     
     logos_cliente = [l for l in st.session_state.logos if l.get('cliente') == nombre_cliente and l.get('estado') != "Archivado/Pagado"]
