@@ -110,8 +110,8 @@ if modo == "Panel Administrador (Tú)":
         c_m1, c_m2, c_m3, c_m4 = st.columns(4)
         c_m1.metric("⏳ Logos por Hacer", logos_por_hacer_count)
         c_m2.metric("✅ Logos Terminados", logos_terminados_count)
-        c_m3.metric("Cobrados (USD)", f"${total_usd:.2f} USD")
-        c_m4.metric("Cobrados (DOP)", f"RD$ {total_dop:,.2f}")
+        c_m3.metric("Total Acumulado (USD)", f"${total_usd:.2f} USD")
+        c_m4.metric("Total Acumulado (DOP)", f"RD$ {total_dop:,.2f}")
 
         st.divider()
 
@@ -204,7 +204,6 @@ if modo == "Panel Administrador (Tú)":
                 with col_img:
                     if logo.get('imagen_obj') is not None:
                         st.image(logo['imagen_obj'], caption="Diseño Original", width=100)
-                        # --- LIGHTBOX / PREVISUALIZACIÓN AMPLIADA ---
                         with st.popover("🔍 Ver Grande"):
                             st.image(logo['imagen_obj'], caption=f"Diseño: {logo.get('nombre')}", use_container_width=True)
                     else:
