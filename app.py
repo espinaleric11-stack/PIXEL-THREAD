@@ -409,7 +409,7 @@ elif modo == "Portal de Clientes":
                     
             with col_info:
                 st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
-                st.markdown(f"🎟️ **Posición en la cola de producción: #{posicion_en_cola}**")
+                st.markdown(f"🎟️ Posición en la cola de producción: <span style='color: #10b981; font-weight: bold;'>#{posicion_en_cola}</span>", unsafe_allow_html=True)
                 st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Posición prenda:** {logo.get('posicion_logo', 'No especificada')}")
                 if logo.get('tipo') == "Gorra":
                     st.write(f"**Detalle Gorra:** {logo.get('ubicacion_gorra', 'N/A')} ({logo.get('detalle_gorra', 'N/A')})")
