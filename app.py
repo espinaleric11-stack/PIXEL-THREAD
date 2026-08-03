@@ -315,7 +315,7 @@ elif modo == "Portal de Clientes":
 
         st.divider()
 
-        with st.expander("➕ Enviar un Nuevo Logo a Digitalizar", expanded=False):
+        with st.expander("➕ Enviar un Nuevo Logo a Digitalizar", expanded=not st.session_state.form_enviado):
             if st.session_state.form_enviado:
                 st.success("✅ ¡ORDEN AGREGADA CORRECTAMENTE!")
                 if st.button("Enviar otro diseño", key=f"otro_{nombre_cliente}"):
