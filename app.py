@@ -121,24 +121,33 @@ if modo == "Panel Administrador (Tú)":
 
             st.divider()
 
-            # --- SECCIÓN: CONTROL Y REINICIO POR CLIENTE ---
-            st.subheader("👥 Control y Cierre de Ciclo por Cliente")
-            for cli in st.session_state.clientes_registrados.keys():
+            # --- SECCIÓN: CONTROL, REINICIO Y ELIMINACIÓN POR CLIENTE ---
+            st.subheader("👥 Control, Cierre de Ciclo y Eliminación por Cliente")
+            for cli in list(st.session_state.clientes_registrados.keys()):
                 logos_cli_term = [l for l in st.session_state.logos if l.get('cliente') == cli and l.get('estado', 'Pendiente') == "Terminado"]
                 sub_usd = sum(l.get('precio_usd', 5.0) for l in logos_cli_term)
                 sub_dop = sum(l.get('precio_dop', 300.0) for l in logos_cli_term)
                 
                 with st.expander(f"👤 Cliente: {cli} — Acumulado Terminado: ${sub_usd:.2f} USD / RD$ {sub_dop:,.2f}"):
-                    c_info, c_btn = st.columns([2, 1])
+                    c_info, c_btn1, c_btn2 = st.columns([2, 1, 1])
                     with c_info:
                         st.write(f"Trabajos terminados pendientes de cerrar ciclo: **{len(logos_cli_term)}**")
-                    with c_btn:
-                        if st.button(f"🔄 Reiniciar Ciclo de {cli}", key=f"reset_cli_{cli}"):
+                    with c_btn1:
+                        if st.button(f"🔄 Reiniciar Ciclo", key=f"reset_cli_{cli}"):
                             for logo in st.session_state.logos:
                                 if logo.get('cliente') == cli and logo.get('estado', 'Pendiente') == "Terminado":
                                     logo['pago'] = "Pagado"
                                     logo['estado'] = "Archivado/Pagado"
-                            st.success(f"¡Ciclo de {cli} reiniciado con éxito!")
+                            st.success(f"¡Ciclo de {cli} reiniciado!")
+                            st.rerun()
+                    with c_btn2:
+                        if st.button(f"🗑️ Eliminar Usuario", key=f"del_user_{cli}"):
+                            # Eliminar al cliente de la lista de registrados
+                            del st.session_state.clientes_registrados[cli]
+                            # Opcional: limpiar recibos de pago si tuviera
+                            if cli in st.session_state.recibos_pago:
+                                del st.session_state.recibos_pago[cli]
+                            st.warning(f"¡Usuario '{cli}' eliminado correctamente!")
                             st.rerun()
 
             st.divider()
@@ -228,7 +237,7 @@ elif modo == "Portal de Clientes":
     
     if st.session_state.cliente_logeado is None:
         st.title("👤 Portal de Clientes - Pixel Thread")
-        st.write("Ingresa tu nombre de usuario autorizado para acceder à tu portal:")
+        st.write("Ingresa tu nombre de usuario autorizado para acceder a tu portal:")
         
         with st.form(key="form_login_cliente"):
             usuario_ingresado = st.text_input("Tu Nombre de Usuario")
