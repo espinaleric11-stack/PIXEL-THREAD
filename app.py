@@ -62,9 +62,9 @@ if "logos" not in st.session_state:
         st.session_state.logos = datos_guardados["logos"]
     else:
         st.session_state.logos = [
-            {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "pago": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "comentario": "Urgente", "archivo": "leon.png"},
-            {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "En Revisión", "pago": "Pendiente", "tipo": "Gorra", "ubicacion_gorra": "Frontal", "detalle_gorra": "3D (Puff)", "comentario": "Centrado", "archivo": "cafe.png"},
-            {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Terminado", "pago": "Pagado", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "comentario": "Ninguno", "archivo": "escudo.png"},
+            {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "pago": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "posicion_trabajo": "Centro / Pecho estándar", "comentario": "Urgente", "archivo": "leon.png"},
+            {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "En Revisión", "pago": "Pendiente", "tipo": "Gorra", "ubicacion_gorra": "Frontal", "detalle_gorra": "3D (Puff)", "posicion_trabajo": "Centro / Pecho estándar", "comentario": "Centrado", "archivo": "cafe.png"},
+            {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Terminado", "pago": "Pagado", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "posicion_trabajo": "Centro / Pecho estándar", "comentario": "Ninguno", "archivo": "escudo.png"},
         ]
 
 if "recibos_pago" not in st.session_state:
@@ -98,7 +98,6 @@ if modo == "Panel Administrador (Tú)":
 
     st.divider()
 
-    # --- SECCIÓN ENMASCARADA EN UN PANEL DESPLEGABLE ---
     with st.expander("➕ Registrar Nuevo Cliente, Control y Recibos"):
         st.subheader("➕ Registrar Nuevo Cliente y su Divisa")
         with st.form(key="form_nuevo_cliente"):
@@ -176,12 +175,12 @@ if modo == "Panel Administrador (Tú)":
     logos_por_hacer = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') != "Terminado"]
     logos_terminados = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') == "Terminado"]
 
-    # 1. GESTIÓN DE TRABAJOS ACTIVOS (PENDIENTES, EN REVISIÓN, EN PROGRESO)
+    # 1. GESTIÓN DE TRABAJOS ACTIVOS (MOSTRANDO POSICIÓN EN COLA)
     st.subheader("📋 Gestión de Trabajos (Pendientes y En Proceso)")
     if not logos_por_hacer:
         st.info("No hay trabajos activos pendientes o en proceso.")
 
-    for logo in logos_por_hacer:
+    for idx_cola, logo in enumerate(logos_por_hacer, 1):
         i = st.session_state.logos.index(logo)
         
         with st.container():
@@ -200,9 +199,9 @@ if modo == "Panel Administrador (Tú)":
                     st.info("Sin miniatura")
 
             with col_info:
-                st.markdown(f"### 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*")
+                st.markdown(f"### 🔢 Cola #{idx_cola} - 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*")
                 st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
-                st.write(f"**Posición de bordado:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
+                st.write(f"**Posición en prenda:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
                 st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
                 st.write(f"**Archivo cliente:** `📁 {logo.get('archivo', 'Sin archivo')}`")
                 st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
@@ -269,7 +268,7 @@ if modo == "Panel Administrador (Tú)":
             with col_info:
                 st.markdown(f"### 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*")
                 st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
-                st.write(f"**Posición de bordado:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
+                st.write(f"**Posición en prenda:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
                 st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
                 st.write(f"**Archivo cliente:** `📁 {logo.get('archivo', 'Sin archivo')}`")
                 st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
@@ -363,7 +362,6 @@ def render_portal_cliente(nombre_cliente):
 
     st.divider()
 
-    # --- SECCIÓN DE SUBIR RECIBO EN BARRA DESPLEGABLE ---
     with st.expander("🧾 Subir Recibo de Pago"):
         recibo_subido = st.file_uploader("Sube tu comprobante", type=["png", "jpg", "jpeg", "pdf"], key=f"recibo_file_{nombre_cliente}")
         
@@ -395,7 +393,6 @@ def render_portal_cliente(nombre_cliente):
                 key=f"inp_file_{nombre_cliente}"
             )
             
-            # --- VISTA PREVIA INSTANTÁNEA DE LA MINIATURA ---
             if archivos_subidos:
                 st.write("🖼️ **Vista previa de la miniatura:**")
                 cols_prev = st.columns(min(len(archivos_subidos), 4))
@@ -419,7 +416,6 @@ def render_portal_cliente(nombre_cliente):
                 else:
                     detalle_gorra = "Plano (Flat)"
 
-            # --- NUEVO CAMPO: POSICIÓN EN LA QUE QUEDA EL LOGO ---
             posicion_trabajo = st.selectbox(
                 "Posición en la prenda para trabajar el logo:",
                 [
@@ -476,35 +472,44 @@ def render_portal_cliente(nombre_cliente):
     logos_por_realizar = [l for l in logos_cliente if l.get('estado', 'Pendiente') != "Terminado"]
     logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
 
-    # TRABAJOS POR REALIZAR
-    st.subheader("⏳ Trabajos por Realizar")
+    # TRABAJOS POR REALIZAR (MOSTRANDO POSICIÓN EN COLA GENERAL Y MINIATURA)
+    st.subheader("⏳ Trabajos por Realizar y Estado en Cola")
     if not logos_por_realizar:
         st.info("No tienes trabajos pendientes actualmente.")
 
+    # Obtenemos la lista global de activos para calcular la posición real en la cola general de trabajo
+    todos_activos_global = [l for l in st.session_state.logos if l.get('estado') != "Archivado/Pagado" and l.get('estado', 'Pendiente') != "Terminado"]
+
     for logo in logos_por_realizar:
+        # Calcular la posición exacta en la cola general (1-indexed)
+        try:
+            posicion_en_cola = todos_activos_global.index(logo) + 1
+        except ValueError:
+            posicion_en_cola = "N/A"
+
         col_img, col_info = st.columns([1, 3])
         with col_img:
             if logo.get('imagen_bytes'):
                 try:
                     img_cargada = Image.open(io.BytesIO(logo['imagen_bytes']))
-                    st.image(img_cargada, caption="Tu Diseño", width=100)
+                    st.image(img_cargada, caption=logo.get('nombre', 'Diseño'), width=100)
                 except Exception:
                     st.info("Sin miniatura")
             elif logo.get('imagen_obj') is not None:
-                st.image(logo['imagen_obj'], caption="Tu Diseño", width=100)
+                st.image(logo['imagen_obj'], caption=logo.get('nombre', 'Diseño'), width=100)
             else:
                 st.info("Sin miniatura")
                 
         with col_info:
-            st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
+            st.markdown(f"### 🔢 Posición en Cola: #{posicion_en_cola} — 🧵 {logo.get('nombre', 'Logo')}")
             st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
-            st.write(f"**Posición:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
+            st.write(f"**Posición en prenda:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
             st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
             st.write(f"**Archivos:** `📁 {logo.get('archivo', 'N/A')}`")
         
         estado_logo = logo.get('estado', 'Pendiente')
         if estado_logo == "Pendiente":
-            st.info("⏳ Estado: Recibido / En espera de revisión")
+            st.info(f"⏳ Estado: Recibido (Tu orden está en el puesto #{posicion_en_cola} de la cola general)")
             col_mod, col_elim = st.columns(2)
             with col_mod:
                 with st.popover("✏️ Modificar Orden"):
@@ -548,18 +553,18 @@ def render_portal_cliente(nombre_cliente):
                 if logo.get('imagen_bytes'):
                     try:
                         img_cargada = Image.open(io.BytesIO(logo['imagen_bytes']))
-                        st.image(img_cargada, caption="Diseño", width=100)
+                        st.image(img_cargada, caption=logo.get('nombre', 'Diseño'), width=100)
                     except Exception:
                         st.info("Sin miniatura")
                 elif logo.get('imagen_obj') is not None:
-                    st.image(logo['imagen_obj'], caption="Diseño", width=100)
+                    st.image(logo['imagen_obj'], caption=logo.get('nombre', 'Diseño'), width=100)
                 else:
                     st.info("Sin miniatura")
                     
             with col_info:
                 st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
                 st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
-                st.write(f"**Posición:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
+                st.write(f"**Posición en prenda:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
                 st.write(f"**Notas:** {logo.get('comentario', 'Ninguno')}")
             
             st.success("✅ Estado: Digitalización Finalizada")
