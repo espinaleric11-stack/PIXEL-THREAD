@@ -524,7 +524,7 @@ def render_portal_cliente(nombre_cliente):
     st.divider()
 
     logos_por_realizar = [l for l in logos_cliente if l.get('estado', 'Pendiente') != "Terminado"]
-    logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente'] == "Terminado"] if False else [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
+    logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
 
     # TRABAJOS POR REALIZAR (MOSTRANDO POSICIÓN EN COLA GENERAL Y MINIATURA)
     st.subheader("⏳ Trabajos por Realizar y Estado en Cola")
