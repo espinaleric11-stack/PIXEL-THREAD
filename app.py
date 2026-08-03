@@ -360,109 +360,112 @@ def render_portal_cliente(nombre_cliente):
 
     st.divider()
 
-    with st.expander("🧾 Subir Recibo de Pago"):
-        recibo_subido = st.file_uploader("Sube tu comprobante", type=["png", "jpg", "jpeg", "pdf"], key=f"recibo_file_{nombre_cliente}")
-        
-        if st.button("Enviar Comprobante", key=f"btn_enviar_recibo_{nombre_cliente}"):
-            if recibo_subido:
-                st.session_state.recibos_pago[nombre_cliente] = {
-                    "nombre_archivo": recibo_subido.name,
-                    "bytes": recibo_subido.getvalue()
-                }
-                st.success("¡Recibo enviado al administrador con éxito!")
-            else:
-                st.error("Por favor, selecciona un archivo antes de enviar el comprobante.")
+    # --- SECCIÓN COMPACTA: ACCESOS RÁPIDOS EN DOS COLUMNAS ---
+    col_btn1, col_btn2 = st.columns(2)
 
-    st.divider()
-
-    with st.expander("➕ Enviar un Nuevo Logo a Digitalizar", expanded=False):
-        if st.session_state.form_enviado:
-            st.success("✅ ¡ORDEN AGREGADA CORRECTAMENTE!")
-            if st.button("Enviar otro diseño", key=f"otro_{nombre_cliente}"):
-                st.session_state.form_enviado = False
-                st.rerun()
-        else:
-            nombre_logo = st.text_input("Nombre del Logo / Diseño", key=f"inp_nom_{nombre_cliente}")
+    with col_btn1:
+        with st.popover("🧾 Subir Recibo de Pago", use_container_width=True):
+            recibo_subido = st.file_uploader("Sube tu comprobante", type=["png", "jpg", "jpeg", "pdf"], key=f"recibo_file_{nombre_cliente}")
             
-            archivos_subidos = st.file_uploader(
-                "Sube tus archivos originales (puedes seleccionar varios a la vez)", 
-                type=["png", "jpg", "jpeg", "ai", "pdf"], 
-                accept_multiple_files=True, 
-                key=f"inp_file_{nombre_cliente}"
-            )
-            
-            if archivos_subidos:
-                st.write("🖼️ **Vista previa de la miniatura:**")
-                cols_prev = st.columns(min(len(archivos_subidos), 4))
-                for idx, arch in enumerate(archivos_subidos):
-                    try:
-                        img_prev = Image.open(arch)
-                        with cols_prev[idx % 4]:
-                            st.image(img_prev, caption=arch.name, width=80)
-                    except Exception:
-                        pass
-
-            tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"], key=f"tipo_app_{nombre_cliente}")
-            
-            ubicacion_gorra = "N/A"
-            detalle_gorra = "N/A"
-            
-            if tipo_aplicacion == "Gorra":
-                ubicacion_gorra = st.radio("Selecciona la ubicación en la gorra:", ["Frontal", "Trasero", "Lateral"], key=f"ubicacion_{nombre_cliente}")
-                if ubicacion_gorra == "Frontal":
-                    detalle_gorra = st.radio("Selecciona el estilo:", ["3D (Puff)", "Plano (Flat)"], key=f"detalle_{nombre_cliente}")
+            if st.button("Enviar Comprobante", key=f"btn_enviar_recibo_{nombre_cliente}"):
+                if recibo_subido:
+                    st.session_state.recibos_pago[nombre_cliente] = {
+                        "nombre_archivo": recibo_subido.name,
+                        "bytes": recibo_subido.getvalue()
+                    }
+                    st.success("¡Recibo enviado al administrador con éxito!")
                 else:
-                    detalle_gorra = "Plano (Flat)"
-            
-            comentario_cliente = st.text_area("Comentarios o instrucciones especiales", key=f"inp_com_{nombre_cliente}")
-            
-            if st.button("Enviar Logo a Pixel Thread", key=f"btn_enviar_{nombre_cliente}"):
-                if nombre_logo:
-                    nombre_archivo = ", ".join([f.name for f in archivos_subidos]) if archivos_subidos else "Sin archivo adjunto"
-                    
-                    img_bytes_guardar = None
-                    if archivos_subidos:
+                    st.error("Por favor, selecciona un archivo antes de enviar el comprobante.")
+
+    with col_btn2:
+        with st.popover("➕ Enviar Nuevo Logo", use_container_width=True):
+            if st.session_state.form_enviado:
+                st.success("✅ ¡ORDEN AGREGADA CORRECTAMENTE!")
+                if st.button("Enviar otro diseño", key=f"otro_{nombre_cliente}"):
+                    st.session_state.form_enviado = False
+                    st.rerun()
+            else:
+                nombre_logo = st.text_input("Nombre del Logo / Diseño", key=f"inp_nom_{nombre_cliente}")
+                
+                archivos_subidos = st.file_uploader(
+                    "Sube tus archivos originales", 
+                    type=["png", "jpg", "jpeg", "ai", "pdf"], 
+                    accept_multiple_files=True, 
+                    key=f"inp_file_{nombre_cliente}"
+                )
+                
+                if archivos_subidos:
+                    st.write("🖼️ **Vista previa:**")
+                    cols_prev = st.columns(min(len(archivos_subidos), 4))
+                    for idx, arch in enumerate(archivos_subidos):
                         try:
-                            img_bytes_guardar = archivos_subidos[0].getvalue()
+                            img_prev = Image.open(arch)
+                            with cols_prev[idx % 4]:
+                                st.image(img_prev, caption=arch.name, width=80)
                         except Exception:
                             pass
 
-                    nuevo_logo = {
-                        "id": len(st.session_state.logos) + 1,
-                        "cliente": nombre_cliente,
-                        "nombre": nombre_logo,
-                        "precio_usd": 5.0,
-                        "precio_dop": 300.0,
-                        "estado": "Pendiente",
-                        "pago": "Pendiente",
-                        "tipo": tipo_aplicacion,
-                        "ubicacion_gorra": ubicacion_gorra,
-                        "detalle_gorra": detalle_gorra,
-                        "comentario": comentario_cliente if comentario_cliente else "Ninguno",
-                        "archivo": nombre_archivo,
-                        "imagen_bytes": img_bytes_guardar
-                    }
-                    st.session_state.logos.append(nuevo_logo)
-                    guardar_datos()
-                    st.session_state.form_enviado = True
-                    st.toast("¡Orden agregada con éxito!", icon="🎉")
-                    st.rerun()
-                else:
-                    st.error("Por favor, ingresa un nombre para el logo.")
+                tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"], key=f"tipo_app_{nombre_cliente}")
+                
+                ubicacion_gorra = "N/A"
+                detalle_gorra = "N/A"
+                
+                if tipo_aplicacion == "Gorra":
+                    ubicacion_gorra = st.radio("Ubicación en la gorra:", ["Frontal", "Trasero", "Lateral"], key=f"ubicacion_{nombre_cliente}")
+                    if ubicacion_gorra == "Frontal":
+                        detalle_gorra = st.radio("Estilo:", ["3D (Puff)", "Plano (Flat)"], key=f"detalle_{nombre_cliente}")
+                    else:
+                        detalle_gorra = "Plano (Flat)"
+                
+                comentario_cliente = st.text_area("Comentarios o instrucciones especiales", key=f"inp_com_{nombre_cliente}")
+                
+                if st.button("Enviar Logo a Pixel Thread", key=f"btn_enviar_{nombre_cliente}"):
+                    if nombre_logo:
+                        nombre_archivo = ", ".join([f.name for f in archivos_subidos]) if archivos_subidos else "Sin archivo adjunto"
+                        
+                        img_bytes_guardar = None
+                        if archivos_subidos:
+                            try:
+                                img_bytes_guardar = archivos_subidos[0].getvalue()
+                            except Exception:
+                                pass
+
+                        nuevo_logo = {
+                            "id": len(st.session_state.logos) + 1,
+                            "cliente": nombre_cliente,
+                            "nombre": nombre_logo,
+                            "precio_usd": 5.0,
+                            "precio_dop": 300.0,
+                            "estado": "Pendiente",
+                            "pago": "Pendiente",
+                            "tipo": tipo_aplicacion,
+                            "ubicacion_gorra": ubicacion_gorra,
+                            "detalle_gorra": detalle_gorra,
+                            "comentario": comentario_cliente if comentario_cliente else "Ninguno",
+                            "archivo": nombre_archivo,
+                            "imagen_bytes": img_bytes_guardar
+                        }
+                        st.session_state.logos.append(nuevo_logo)
+                        guardar_datos()
+                        st.session_state.form_enviado = True
+                        st.toast("¡Orden agregada con éxito!", icon="🎉")
+                        st.rerun()
+                    else:
+                        st.error("Por favor, ingresa un nombre para el logo.")
+
+    st.divider()
 
     logos_por_realizar = [l for l in logos_cliente if l.get('estado', 'Pendiente') != "Terminado"]
-    logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
+    logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente'] == "Terminado"]
 
     # TRABAJOS POR REALIZAR (MOSTRANDO POSICIÓN EN COLA GENERAL Y MINIATURA)
     st.subheader("⏳ Trabajos por Realizar y Estado en Cola")
     if not logos_por_realizar:
         st.info("No tienes trabajos pendientes actualmente.")
 
-    # Obtenemos la lista global de activos para calcular la posición real en la cola general de trabajo
     todos_activos_global = [l for l in st.session_state.logos if l.get('estado') != "Archivado/Pagado" and l.get('estado', 'Pendiente') != "Terminado"]
 
     for logo in logos_por_realizar:
-        # Calcular la posición exacta en la cola general (1-indexed)
         try:
             posicion_en_cola = todos_activos_global.index(logo) + 1
         except ValueError:
