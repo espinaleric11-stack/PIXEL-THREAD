@@ -228,17 +228,22 @@ if modo == "Panel Administrador (Tú)":
                         st.session_state.logos[i]['pago'] = nuevo_pago
                         st.rerun()
 
-                with st.expander("📤 Subir múltiples archivos de bordado (.DST / .EMB / .PDF)"):
+                with st.form(key=f"form_subida_archivos_{logo['id']}"):
                     archivos_bordado = st.file_uploader(
-                        "Sube los archivos listos para bordar", 
+                        "Sube los archivos listos para bordar (.DST / .EMB / .PDF)", 
                         type=["dst", "emb", "pes", "jef", "pdf"], 
                         accept_multiple_files=True, 
                         key=f"bordado_{logo['id']}"
                     )
-                    if archivos_bordado:
-                        logo['archivos_multiples'] = [{"nombre": f.name, "bytes": f.getvalue()} for f in archivos_bordado]
-                        nombres_str = ", ".join([f.name for f in archivos_bordado])
-                        st.success(f"Archivos guardados correctamente: {nombres_str}")
+                    btn_guardar_archivos = st.form_submit_button("Guardar Archivos en la Orden")
+                    if btn_guardar_archivos:
+                        if archivos_bordado:
+                            st.session_state.logos[i]['archivos_multiples'] = [{"nombre": f.name, "bytes": f.getvalue()} for f in archivos_bordado]
+                            nombres_str = ", ".join([f.name for f in archivos_bordado])
+                            st.success(f"¡Archivos guardados correctamente: {nombres_str}!")
+                            st.rerun()
+                        else:
+                            st.warning("Por favor, selecciona al menos un archivo para subir.")
 
                 st.divider()
 
@@ -300,13 +305,19 @@ elif modo == "Portal de Clientes":
 
         with col_recibo:
             st.write("🧾 **Subir Recibo de Pago**")
-            recibo_subido = st.file_uploader("Sube tu comprobante", type=["png", "jpg", "jpeg", "pdf"], key=f"recibo_file_{nombre_cliente}")
-            if recibo_subido:
-                st.session_state.recibos_pago[nombre_cliente] = {
-                    "nombre_archivo": recibo_subido.name,
-                    "bytes": recibo_subido.getvalue()
-                }
-                st.success("¡Recibo enviado al administrador con éxito!")
+            with st.form(key=f"form_recibo_{nombre_cliente}"):
+                recibo_subido = st.file_uploader("Sube tu comprobante", type=["png", "jpg", "jpeg", "pdf"], key=f"recibo_file_{nombre_cliente}")
+                btn_enviar_recibo = st.form_submit_button("Enviar Comprobante")
+                if btn_enviar_recibo:
+                    if recibo_subido:
+                        st.session_state.recibos_pago[nombre_cliente] = {
+                            "nombre_archivo": recibo_subido.name,
+                            "bytes": recibo_subido.getvalue()
+                        }
+                        st.success("¡Recibo enviado al administrador con éxito!")
+                        st.rerun()
+                    else:
+                        st.warning("Selecciona un archivo antes de enviar.")
 
         st.divider()
 
@@ -317,67 +328,66 @@ elif modo == "Portal de Clientes":
                     st.session_state.form_enviado = False
                     st.rerun()
             else:
-                nombre_logo = st.text_input("Nombre del Logo / Diseño", key=f"inp_nom_{nombre_cliente}")
-                
-                archivos_subidos = st.file_uploader(
-                    "Sube tus archivos originales (puedes seleccionar varios a la vez)", 
-                    type=["png", "jpg", "jpeg", "ai", "pdf"], 
-                    accept_multiple_files=True, 
-                    key=f"inp_file_{nombre_cliente}"
-                )
-                
-                tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"], key=f"tipo_app_{nombre_cliente}")
-                
-                posicion_logo = st.selectbox(
-                    "Posición del logo en la prenda:", 
-                    ["Pecho Izquierdo", "Pecho Derecho", "Centro Pecho", "Espalda Alta", "Espalda Centro", "Manga Izquierda", "Manga Derecha", "Gorra Frontal", "Gorra Lateral", "Gorra Trasera", "Otra posición"],
-                    key=f"posicion_{nombre_cliente}"
-                )
-                
-                ubicacion_gorra = "N/A"
-                detalle_gorra = "N/A"
-                
-                if tipo_aplicacion == "Gorra":
-                    ubicacion_gorra = st.radio("Selecciona la ubicación específica en la gorra:", ["Frontal", "Trasero", "Lateral"], key=f"ubicacion_{nombre_cliente}")
-                    if ubicacion_gorra == "Frontal":
-                        detalle_gorra = st.radio("Selecciona el estilo:", ["3D (Puff)", "Plano (Flat)"], key=f"detalle_{nombre_cliente}")
-                    else:
-                        detalle_gorra = "Plano (Flat)"
-                
-                comentario_cliente = st.text_area("Comentarios o instrucciones especiales", key=f"inp_com_{nombre_cliente}")
-                
-                if st.button("Enviar Logo a Pixel Thread", key=f"btn_enviar_{nombre_cliente}"):
-                    if nombre_logo:
-                        nombre_archivo = ", ".join([f.name for f in archivos_subidos]) if archivos_subidos else "Sin archivo adjunto"
-                        img_obj = None
-                        if archivos_subidos:
-                            try:
-                                img_obj = Image.open(archivos_subidos[0])
-                            except Exception:
-                                pass
+                with st.form(key=f"form_nuevo_logo_{nombre_cliente}"):
+                    nombre_logo = st.text_input("Nombre del Logo / Diseño")
+                    
+                    archivos_subidos = st.file_uploader(
+                        "Sube tus archivos originales (puedes seleccionar varios a la vez)", 
+                        type=["png", "jpg", "jpeg", "ai", "pdf"], 
+                        accept_multiple_files=True
+                    )
+                    
+                    tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"])
+                    
+                    posicion_logo = st.selectbox(
+                        "Posición del logo en la prenda:", 
+                        ["Pecho Izquierdo", "Pecho Derecho", "Centro Pecho", "Espalda Alta", "Espalda Centro", "Manga Izquierda", "Manga Derecha", "Gorra Frontal", "Gorra Lateral", "Gorra Trasera", "Otra posición"]
+                    )
+                    
+                    ubicacion_gorra = "N/A"
+                    detalle_gorra = "N/A"
+                    
+                    if tipo_aplicacion == "Gorra":
+                        ubicacion_gorra = st.radio("Selecciona la ubicación específica en la gorra:", ["Frontal", "Trasero", "Lateral"])
+                        if ubicacion_gorra == "Frontal":
+                            detalle_gorra = st.radio("Selecciona el estilo:", ["3D (Puff)", "Plano (Flat)"])
+                        else:
+                            detalle_gorra = "Plano (Flat)"
+                    
+                    comentario_cliente = st.text_area("Comentarios o instrucciones especiales")
+                    
+                    btn_enviar_logo = st.form_submit_button("Enviar Logo a Pixel Thread")
+                    if btn_enviar_logo:
+                        if nombre_logo:
+                            nombre_archivo = ", ".join([f.name for f in archivos_subidos]) if archivos_subidos else "Sin archivo adjunto"
+                            img_obj = None
+                            if archivos_subidos:
+                                try:
+                                    img_obj = Image.open(archivos_subidos[0])
+                                except Exception:
+                                    pass
 
-                        nuevo_logo = {
-                            "id": len(st.session_state.logos) + 1,
-                            "cliente": nombre_cliente,
-                            "nombre": nombre_logo,
-                            "precio_usd": 5.0,
-                            "precio_dop": 300.0,
-                            "estado": "Pendiente",
-                            "pago": "Pendiente",
-                            "tipo": tipo_aplicacion,
-                            "ubicacion_gorra": ubicacion_gorra,
-                            "detalle_gorra": detalle_gorra,
-                            "posicion_logo": posicion_logo,
-                            "comentario": comentario_cliente if comentario_cliente else "Ninguno",
-                            "archivo": nombre_archivo,
-                            "imagen_obj": img_obj
-                        }
-                        st.session_state.logos.append(nuevo_logo)
-                        st.session_state.form_enviado = True
-                        st.toast("¡Orden agregada con éxito!", icon="🎉")
-                        st.rerun()
-                    else:
-                        st.error("Por favor, ingresa un nombre para el logo.")
+                            nuevo_logo = {
+                                "id": len(st.session_state.logos) + 1,
+                                "cliente": nombre_cliente,
+                                "nombre": nombre_logo,
+                                "precio_usd": 5.0,
+                                "precio_dop": 300.0,
+                                "estado": "Pendiente",
+                                "pago": "Pendiente",
+                                "tipo": tipo_aplicacion,
+                                "ubicacion_gorra": ubicacion_gorra,
+                                "detalle_gorra": detalle_gorra,
+                                "posicion_logo": posicion_logo,
+                                "comentario": comentario_cliente if comentario_cliente else "Ninguno",
+                                "archivo": nombre_archivo,
+                                "imagen_obj": img_obj
+                            }
+                            st.session_state.logos.append(nuevo_logo)
+                            st.session_state.form_enviado = True
+                            st.rerun()
+                        else:
+                            st.error("Por favor, ingresa un nombre para el logo.")
 
         # --- CONTENEDOR DINÁMICO PARA FORZAR ACTUALIZACIÓN DE ESTADOS ---
         contenedor_dinamico = st.container()
