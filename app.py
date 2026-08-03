@@ -1,11 +1,75 @@
 import streamlit as st
+import json
+import os
 from PIL import Image
+import io
 from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="Pixel Thread - Portal Profesional", layout="centered")
 
 # --- ACTUALIZACIÓN AUTOMÁTICA CADA 2 SEGUNDOS ---
 st_autorefresh(interval=2000, limit=None, key="autorefresh_global")
+
+ARCHIVO_DATOS = "pixel_thread_data.json"
+
+# --- FUNCIONES DE PERSISTENCIA EN DISCO ---
+def guardar_datos():
+    """Guarda todos los estados críticos en un archivo JSON local."""
+    # Convertimos las imágenes PIL y bytes binarios a formatos legibles/manejables si es necesario
+    # Para simplicidad y robustez del guardado de texto, estados y configuración:
+    datos = {
+        "clientes_registrados": st.session_state.clientes_registrados,
+        "logos": [
+            {
+                "id": l.get("id"),
+                "cliente": l.get("cliente"),
+                "nombre": l.get("nombre"),
+                "precio_usd": l.get("precio_usd", 5.0),
+                "precio_dop": l.get("precio_dop", 300.0),
+                "estado": l.get("estado", "Pendiente"),
+                "pago": l.get("pago", "Pendiente"),
+                "tipo": l.get("tipo", "Tela"),
+                "ubicacion_gorra": l.get("ubicacion_gorra", "N/A"),
+                "detalle_gorra": l.get("detalle_gorra", "N/A"),
+                "posicion_logo": l.get("posicion_logo", "N/A"),
+                "comentario": l.get("comentario", "Ninguno"),
+                "archivo": l.get("archivo", "Sin archivo"),
+                # Guardamos los archivos múltiples listos para bordar serializados (nombre y bytes base64 o similar, aquí manejados por bytes directos en sesión)
+            } for l in st.session_state.logos
+        ],
+        # Nota: Los bytes de imágenes y archivos se mantienen seguros en session_state durante la ejecución activa
+    }
+    # Guardamos los metadatos principales
+    try:
+        with open(ARCHIVO_DATOS, "w", encoding="utf-8") as f:
+            # Serializamos lo principal exceptuando objetos binarios directos para evitar errores de escritura
+            json.dump({
+                "clientes_registrados": st.session_state.clientes_registrados,
+                "logos_meta": [{k: v for k, v in l.items() if k not in ['imagen_obj', 'archivos_multiples', 'archivo_bordado_bytes']} for l in st.session_state.logos],
+            }, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print(f"Error al guardar: {e}")
+
+def cargar_datos():
+    """Carga los datos persistidos al iniciar la aplicación."""
+    if os.path.exists(ARCHIVO_DATOS):
+        try:
+            with open(ARCHIVO_DATOS, "r", encoding="utf-8") as f:
+                contenido = json.load(f)
+                if "clientes_registrados" in contenido:
+                    st.session_state.clientes_registrados = contenido["clientes_registrados"]
+                if "logos_meta" in contenido:
+                    # Restaurar logos manteniendo estructura
+                    logos_restaurados = []
+                    for lm in contenido["logos_meta"]:
+                        lm['imagen_obj'] = None
+                        lm['archivos_multiples'] = []
+                        logos_restaurados.append(lm)
+                    st.session_state.logos = logos_restaurados
+                    return True
+        except Exception as e:
+            print(f"Error al cargar: {e}")
+    return False
 
 # --- INICIALIZAR ESTADO PERSISTENTE ---
 if "clientes_registrados" not in st.session_state:
@@ -21,11 +85,13 @@ if "admin_logeado" not in st.session_state:
     st.session_state.admin_logeado = False
 
 if "logos" not in st.session_state:
-    st.session_state.logos = [
-        {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "pago": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "posicion_logo": "Pecho Izquierdo", "comentario": "Urgente", "archivo": "leon.png", "imagen_obj": None},
-        {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "En Progreso", "pago": "Pendiente", "tipo": "Gorra", "ubicacion_gorra": "Frontal", "detalle_gorra": "3D (Puff)", "posicion_logo": "Frontal", "comentario": "Centrado", "archivo": "cafe.png", "imagen_obj": None},
-        {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Terminado", "pago": "Pagado", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "posicion_logo": "Espalda", "comentario": "Ninguno", "archivo": "escudo.png", "imagen_obj": None},
-    ]
+    # Intentamos cargar de disco, si no existe ponemos los iniciales
+    if not cargar_datos():
+        st.session_state.logos = [
+            {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "pago": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "posicion_logo": "Pecho Izquierdo", "comentario": "Urgente", "archivo": "leon.png", "imagen_obj": None, "archivos_multiples": []},
+            {"id": 2, "cliente": "Cliente A", "nombre": "Logo Cafetería", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "En Progreso", "pago": "Pendiente", "tipo": "Gorra", "ubicacion_gorra": "Frontal", "detalle_gorra": "3D (Puff)", "posicion_logo": "Frontal", "comentario": "Centrado", "archivo": "cafe.png", "imagen_obj": None, "archivos_multiples": []},
+            {"id": 3, "cliente": "Cliente B", "nombre": "Escudo Deportivo", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Terminado", "pago": "Pagado", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "posicion_logo": "Espalda", "comentario": "Ninguno", "archivo": "escudo.png", "imagen_obj": None, "archivos_multiples": []},
+        ]
 
 if "recibos_pago" not in st.session_state:
     st.session_state.recibos_pago = {}
@@ -39,7 +105,7 @@ modo = st.sidebar.radio("Selecciona el Modo:", ["Panel Administrador (Tú)", "Po
 
 st.sidebar.divider()
 st.sidebar.info("💡 Tarifa oficial: $5.00 USD / $300.00 DOP por logo digitalizado.")
-st.sidebar.caption("🔄 Actualización automática activa (cada 2 seg)")
+st.sidebar.caption("🔄 Actualización automática y guardado persistente activos.")
 
 # ==========================================
 # 1. VISTA ADMINISTRADOR (CON SEGURIDAD)
@@ -126,7 +192,8 @@ if modo == "Panel Administrador (Tú)":
                             st.error("¡Este usuario ya está registrado!")
                         else:
                             st.session_state.clientes_registrados[usuario_limpio] = nueva_divisa_cli
-                            st.success(f"¡Cliente '{usuario_limpio}' registrado con éxito y habilitado para entrar!")
+                            guardar_datos()
+                            st.success(f"¡Cliente '{usuario_limpio}' registrado con éxito y guardado permanentemente!")
                             st.rerun()
                     else:
                         st.error("Por favor, ingresa un nombre para el cliente.")
@@ -149,13 +216,15 @@ if modo == "Panel Administrador (Tú)":
                                 if logo.get('cliente') == cli and logo.get('estado', 'Pendiente') == "Terminado":
                                     logo['pago'] = "Pagado"
                                     logo['estado'] = "Archivado/Pagado"
-                            st.success(f"¡Ciclo de {cli} reiniciado!")
+                            guardar_datos()
+                            st.success(f"¡Ciclo de {cli} reiniciado y guardado!")
                             st.rerun()
                     with c_btn2:
                         if st.button(f"🗑️ Eliminar Usuario", key=f"del_user_{cli}"):
                             del st.session_state.clientes_registrados[cli]
                             if cli in st.session_state.recibos_pago:
                                 del st.session_state.recibos_pago[cli]
+                            guardar_datos()
                             st.warning(f"¡Usuario '{cli}' eliminado correctamente!")
                             st.rerun()
 
@@ -185,7 +254,6 @@ if modo == "Panel Administrador (Tú)":
         st.subheader("📋 Gestión de Trabajos")
 
         for logo in logos_ordenados_admin:
-            # Buscar el índice actual dinámicamente usando el ID único para evitar desfases
             i = next((idx for idx, item in enumerate(st.session_state.logos) if item["id"] == logo["id"]), None)
             if i is None:
                 continue
@@ -215,11 +283,13 @@ if modo == "Panel Administrador (Tú)":
                 if estado_actual == "Pendiente":
                     if c1.button("▶ Iniciar (Luz Verde)", key=f"iniciar_{logo['id']}"):
                         st.session_state.logos[i]['estado'] = "En Progreso"
+                        guardar_datos()
                         st.rerun()
                 elif estado_actual == "En Progreso":
                     c1.warning("🟢 En Progreso")
                     if c2.button("✓ Marcar Terminado", key=f"terminar_{logo['id']}"):
                         st.session_state.logos[i]['estado'] = "Terminado"
+                        guardar_datos()
                         st.rerun()
                 else:
                     c1.success("✅ Terminado")
@@ -227,6 +297,7 @@ if modo == "Panel Administrador (Tú)":
                     nuevo_pago = c2.selectbox("Estado de Pago", ["Pendiente", "Pagado"], index=0 if pago_actual=="Pendiente" else 1, key=f"pago_{logo['id']}")
                     if nuevo_pago != pago_actual:
                         st.session_state.logos[i]['pago'] = nuevo_pago
+                        guardar_datos()
                         st.rerun()
 
                 with st.form(key=f"form_subida_archivos_{logo['id']}"):
@@ -240,6 +311,7 @@ if modo == "Panel Administrador (Tú)":
                     if btn_guardar_archivos:
                         if archivos_bordado:
                             st.session_state.logos[i]['archivos_multiples'] = [{"nombre": f.name, "bytes": f.getvalue()} for f in archivos_bordado]
+                            guardar_datos()
                             nombres_str = ", ".join([f.name for f in archivos_bordado])
                             st.success(f"¡Archivos guardados correctamente: {nombres_str}!")
                             st.rerun()
@@ -378,9 +450,11 @@ elif modo == "Portal de Clientes":
                                 "posicion_logo": posicion_logo,
                                 "comentario": comentario_cliente if comentario_cliente else "Ninguno",
                                 "archivo": nombre_archivo,
-                                "imagen_obj": img_obj
+                                "imagen_obj": img_obj,
+                                "archivos_multiples": []
                             }
                             st.session_state.logos.append(nuevo_logo)
+                            guardar_datos()
                             st.session_state.form_enviado = True
                             st.rerun()
                         else:
@@ -436,11 +510,13 @@ elif modo == "Portal de Clientes":
                                     logo['nombre'] = nuevo_nombre
                                     logo['posicion_logo'] = nueva_pos
                                     logo['comentario'] = nuevo_comentario
-                                    st.success("¡Modificado!")
+                                    guardar_datos()
+                                    st.success("¡Modificado y guardado!")
                                     st.rerun()
                     with col_elim:
                         if st.button("🗑️ Eliminar", key=f"del_{logo['id']}"):
                             st.session_state.logos.remove(logo)
+                            guardar_datos()
                             st.warning("Orden eliminada.")
                             st.rerun()
                 elif estado_logo == "En Progreso":
