@@ -8,7 +8,7 @@ import io
 
 st.set_page_config(page_title="Pixel Thread - Portal Profesional", layout="centered")
 
-# --- ESTILOS CSS PERSONALIZADOS (TEMA FUTURISTA / CYBERPUNK) ---
+# --- ESTILOS CSS PERSONALIZADOS (TEMA FUTURISTA / CYBERPUNK CON LOGO GIGANTE) ---
 st.markdown("""
     <style>
     .stApp {
@@ -16,28 +16,30 @@ st.markdown("""
         color: #e2e8f0;
     }
     
-    /* Fondo con marca de agua gigante en una esquina */
+    /* Fondo con el logo integrado en la esquina inferior derecha en grande y translúcido */
     .stApp::before {
-        content: "PIXEL THREAD";
+        content: "";
         position: fixed;
-        bottom: -50px;
-        right: -50px;
-        font-size: 15vw;
-        font-weight: 900;
-        color: rgba(0, 255, 204, 0.03);
+        bottom: -20px;
+        right: -20px;
+        width: 35vw;
+        height: 35vw;
+        max-width: 450px;
+        max-height: 450px;
+        background-image: url('https://i.ibb.co/3ykJ2p0/PIXEL-THREAD-W-Mesa-de-trabajo-1.png');
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: bottom right;
+        opacity: 0.12;
         z-index: 0;
         pointer-events: none;
-        white-space: nowrap;
-        letter-spacing: -5px;
     }
 
-    /* Tarjetas y contenedores con toque futurista */
     div[data-testid="stExpander"], div.stContainer, div[data-testid="stVerticalBlock"] > div > div.element-container {
         position: relative;
         z-index: 1;
     }
 
-    /* Métricas futuristas */
     div[data-testid="stMetric"] {
         background: rgba(17, 24, 39, 0.7);
         border: 1px solid rgba(0, 255, 204, 0.2);
@@ -53,7 +55,6 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
     }
 
-    /* Botones estilo neón futurista */
     .stButton>button {
         background: linear-gradient(90deg, #00ffcc 0%, #0077ff 100%);
         color: #0a0f1d;
@@ -68,7 +69,6 @@ st.markdown("""
         transform: translateY(-2px);
     }
 
-    /* Sidebar futurista */
     section[data-testid="stSidebar"] {
         background-color: #070a14;
         border-right: 1px solid rgba(0, 255, 204, 0.1);
@@ -524,7 +524,7 @@ def render_portal_cliente(nombre_cliente):
     st.divider()
 
     logos_por_realizar = [l for l in logos_cliente if l.get('estado', 'Pendiente') != "Terminado"]
-    logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
+    logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente'] == "Terminado"] if False else [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
 
     # TRABAJOS POR REALIZAR (MOSTRANDO POSICIÓN EN COLA GENERAL Y MINIATURA)
     st.subheader("⏳ Trabajos por Realizar y Estado en Cola")
