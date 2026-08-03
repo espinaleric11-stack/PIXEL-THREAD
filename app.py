@@ -5,38 +5,65 @@ from datetime import datetime
 import json
 import os
 import io
+import base64
 
 st.set_page_config(page_title="Pixel Thread - Portal Profesional", layout="centered")
 
-# --- ESTILOS CSS PERSONALIZADOS (TEMA FUTURISTA / CYBERPUNK CON LOGO GIGANTE) ---
-st.markdown("""
+# --- CONVERTIR LOGO A BASE64 PARA EL FONDO ---
+logo_path = "PIXEL THREAD W_Mesa de trabajo 1_2.jpg"
+logo_base64 = ""
+if os.path.exists(logo_path):
+    with open(logo_path, "rb") as f:
+        logo_base64 = base64.b64encode(f.read()).decode("utf-8")
+
+# --- ESTILOS CSS PERSONALIZADOS (TEMA FUTURISTA / CYBERPUNK CON LOGO GIGANTE EN EL FONDO) ---
+st.markdown(f"""
     <style>
-    .stApp {
+    .stApp {{
         background: linear-gradient(135deg, #0a0f1d 0%, #111827 50%, #1f1128 100%);
         color: #e2e8f0;
-    }
+    }}
     
-    div[data-testid="stExpander"], div.stContainer, div[data-testid="stVerticalBlock"] > div > div.element-container {
+    /* Fondo con el logo integrado en la esquina inferior derecha en grande y translúcido */
+    .stApp::before {{
+        content: "";
+        position: fixed;
+        bottom: -20px;
+        right: -20px;
+        width: 35vw;
+        height: 35vw;
+        max-width: 450px;
+        max-height: 450px;
+        background-image: url("data:image/jpeg;base64,{logo_base64}");
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: bottom right;
+        opacity: 0.05;
+        z-index: 0;
+        pointer-events: none;
+    }}
+
+    div[data-testid="stExpander"], div.stContainer, div[data-testid="stVerticalBlock"] > div > div.element-container {{
         position: relative;
         z-index: 1;
-    }
+    }}
 
-    div[data-testid="stMetric"] {
+    div[data-testid="stMetric"] {{
         background: rgba(17, 24, 39, 0.7);
         border: 1px solid rgba(0, 255, 204, 0.2);
         padding: 15px;
         border-radius: 12px;
         box-shadow: 0 0 15px rgba(0, 255, 204, 0.05);
-    }
-    div[data-testid="stMetric"] label {
+    }}
+    div[data-testid="stMetric"] label {{
         color: #94a3b8 !important;
-    }
-    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+    }}
+    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {{
         color: #00ffcc !important;
         text-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
-    }
+    }}
 
-    .stButton>button {
+    .stButton>button {{
         background: linear-gradient(90deg, #00ffcc 0%, #0077ff 100%);
         color: #0a0f1d;
         font-weight: bold;
@@ -44,16 +71,16 @@ st.markdown("""
         border-radius: 8px;
         box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
         transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
+    }}
+    .stButton>button:hover {{
         box-shadow: 0 0 20px rgba(0, 255, 204, 0.6);
         transform: translateY(-2px);
-    }
+    }}
 
-    section[data-testid="stSidebar"] {
+    section[data-testid="stSidebar"] {{
         background-color: #070a14;
         border-right: 1px solid rgba(0, 255, 204, 0.1);
-    }
+    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -82,14 +109,12 @@ def guardar_datos():
                 logo_copy[k] = v
             logos_limpios.append(logo_copy)
 
-        # Limpiar avatares de clientes si tienen bytes guardados directamente para el JSON
         clientes_limpios = {}
         for cli, info in st.session_state.get("clientes_registrados", {}).items():
             if isinstance(info, dict):
                 clientes_limpios[cli] = {
                     "divisa": info.get("divisa", "Dólares (USD - $)"),
                     "avatar_nombre": info.get("avatar_nombre", None)
-                    # Los bytes se quedan en session_state pero no se escriben crudos al JSON para evitar corrupción
                 }
             else:
                 clientes_limpios[cli] = {"divisa": info, "avatar_bytes": None, "avatar_nombre": None}
@@ -118,7 +143,6 @@ if "clientes_registrados" not in st.session_state:
             "Cliente B": {"divisa": "Pesos Dominicanos (DOP - RD$)", "avatar_bytes": None, "avatar_nombre": None}
         }
 else:
-    # Asegurar formato dict para clientes existentes
     for cli, val in list(st.session_state.clientes_registrados.items()):
         if not isinstance(val, dict):
             st.session_state.clientes_registrados[cli] = {"divisa": val, "avatar_bytes": None, "avatar_nombre": None}
@@ -422,7 +446,6 @@ def render_portal_cliente(nombre_cliente):
         divisa_default = info_cliente
         avatar_bytes = None
 
-    # Cabecera con imagen de perfil o ícono por defecto si no tiene logo
     col_av, col_tit = st.columns([1, 12])
     with col_av:
         if avatar_bytes:
