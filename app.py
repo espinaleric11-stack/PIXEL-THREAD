@@ -4,7 +4,7 @@ from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="Pixel Thread - Portal Profesional", layout="centered")
 
-# --- ACTUALIZACIÓN AUTOMÁTICA CADA 2 SEGUNDOS ---
+# --- ACTUALIZACIÓN AUTOMÁTICA EXACTA CADA 2 SEGUNDOS ---
 st_autorefresh(interval=2000, limit=None, key="autorefresh_global")
 
 # --- INICIALIZAR LISTA DE CLIENTES Y DIVISAS ---
