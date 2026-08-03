@@ -390,13 +390,13 @@ elif modo == "Portal de Clientes":
 
         with contenedor_dinamico:
             # Filtrar exclusivamente los que NO están terminados para la sección de pendientes
-            logos_por_realizar = [l for l in logos_cliente if l.get('estado', 'Pendiente') != "Terminado"]
+            logos_por_realizar = [l for l in logos_cliente if l.get('estado') not in ["Terminado", "Archivado/Pagado"]]
             
             st.subheader("⏳ Trabajos por Realizar y Turno en Cola")
             if not logos_por_realizar:
                 st.info("No tienes trabajos pendientes actualmente.")
 
-            cola_global_activa = [l for l in st.session_state.logos if l.get('estado', 'Pendiente') != "Terminado" and l.get('estado') != "Archivado/Pagado"]
+            cola_global_activa = [l for l in st.session_state.logos if l.get('estado') not in ["Terminado", "Archivado/Pagado"]]
 
             for logo in logos_por_realizar:
                 if logo in cola_global_activa:
@@ -458,7 +458,7 @@ elif modo == "Portal de Clientes":
                 st.divider()
 
             # Filtrar exclusivamente los terminados para la sección de entregas
-            logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
+            logos_realizados = [l for l in logos_cliente if l.get('estado') == "Terminado"]
             
             st.subheader("✅ Trabajos Realizados y Descargas")
             if not logos_realizados:
