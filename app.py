@@ -15,34 +15,8 @@ ARCHIVO_DATOS = "pixel_thread_data.json"
 # --- FUNCIONES DE PERSISTENCIA EN DISCO ---
 def guardar_datos():
     """Guarda todos los estados críticos en un archivo JSON local."""
-    # Convertimos las imágenes PIL y bytes binarios a formatos legibles/manejables si es necesario
-    # Para simplicidad y robustez del guardado de texto, estados y configuración:
-    datos = {
-        "clientes_registrados": st.session_state.clientes_registrados,
-        "logos": [
-            {
-                "id": l.get("id"),
-                "cliente": l.get("cliente"),
-                "nombre": l.get("nombre"),
-                "precio_usd": l.get("precio_usd", 5.0),
-                "precio_dop": l.get("precio_dop", 300.0),
-                "estado": l.get("estado", "Pendiente"),
-                "pago": l.get("pago", "Pendiente"),
-                "tipo": l.get("tipo", "Tela"),
-                "ubicacion_gorra": l.get("ubicacion_gorra", "N/A"),
-                "detalle_gorra": l.get("detalle_gorra", "N/A"),
-                "posicion_logo": l.get("posicion_logo", "N/A"),
-                "comentario": l.get("comentario", "Ninguno"),
-                "archivo": l.get("archivo", "Sin archivo"),
-                # Guardamos los archivos múltiples listos para bordar serializados (nombre y bytes base64 o similar, aquí manejados por bytes directos en sesión)
-            } for l in st.session_state.logos
-        ],
-        # Nota: Los bytes de imágenes y archivos se mantienen seguros en session_state durante la ejecución activa
-    }
-    # Guardamos los metadatos principales
     try:
         with open(ARCHIVO_DATOS, "w", encoding="utf-8") as f:
-            # Serializamos lo principal exceptuando objetos binarios directos para evitar errores de escritura
             json.dump({
                 "clientes_registrados": st.session_state.clientes_registrados,
                 "logos_meta": [{k: v for k, v in l.items() if k not in ['imagen_obj', 'archivos_multiples', 'archivo_bordado_bytes']} for l in st.session_state.logos],
@@ -59,7 +33,6 @@ def cargar_datos():
                 if "clientes_registrados" in contenido:
                     st.session_state.clientes_registrados = contenido["clientes_registrados"]
                 if "logos_meta" in contenido:
-                    # Restaurar logos manteniendo estructura
                     logos_restaurados = []
                     for lm in contenido["logos_meta"]:
                         lm['imagen_obj'] = None
@@ -85,7 +58,6 @@ if "admin_logeado" not in st.session_state:
     st.session_state.admin_logeado = False
 
 if "logos" not in st.session_state:
-    # Intentamos cargar de disco, si no existe ponemos los iniciales
     if not cargar_datos():
         st.session_state.logos = [
             {"id": 1, "cliente": "Cliente A", "nombre": "Logo León Dorado", "precio_usd": 5.0, "precio_dop": 300.0, "estado": "Pendiente", "pago": "Pendiente", "tipo": "Tela", "ubicacion_gorra": "N/A", "detalle_gorra": "N/A", "posicion_logo": "Pecho Izquierdo", "comentario": "Urgente", "archivo": "leon.png", "imagen_obj": None, "archivos_multiples": []},
@@ -105,7 +77,7 @@ modo = st.sidebar.radio("Selecciona el Modo:", ["Panel Administrador (Tú)", "Po
 
 st.sidebar.divider()
 st.sidebar.info("💡 Tarifa oficial: $5.00 USD / $300.00 DOP por logo digitalizado.")
-st.sidebar.caption("🔄 Actualización automática y guardado persistente activos.")
+st.sidebar.caption("🔄 Actualización automática cada 2 seg y guardado persistente")
 
 # ==========================================
 # 1. VISTA ADMINISTRADOR (CON SEGURIDAD)
