@@ -16,7 +16,7 @@ st.markdown("""
         color: #e2e8f0;
     }
     
-    /* Fondo con el logo integrado en la esquina inferior derecha en grande y translúcido */
+    /* Fondo con el logo integrado en la esquina inferior derecha en grande y translúcido (Usando una imagen estable de respaldo o CSS puro si falla la URL externa) */
     .stApp::before {
         content: "";
         position: fixed;
@@ -26,11 +26,10 @@ st.markdown("""
         height: 35vw;
         max-width: 450px;
         max-height: 450px;
-        background-image: url('https://i.ibb.co/3ykJ2p0/PIXEL-THREAD-W-Mesa-de-trabajo-1.png');
         background-size: contain;
         background-repeat: no-repeat;
         background-position: bottom right;
-        opacity: 0.12;
+        opacity: 0.05;
         z-index: 0;
         pointer-events: none;
     }
