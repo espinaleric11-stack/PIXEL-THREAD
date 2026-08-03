@@ -77,7 +77,7 @@ modo = st.sidebar.radio("Selecciona el Modo:", ["Panel Administrador (Tú)", "Po
 
 st.sidebar.divider()
 st.sidebar.info("💡 Tarifa oficial: $5.00 USD / $300.00 DOP por logo digitalizado.")
-st.sidebar.caption("🔄 Actualización automática cada 2 seg y guardado persistente")
+st.sidebar.caption("🔄 Actualización en vivo (2s) y persistencia activa.")
 
 # ==========================================
 # 1. VISTA ADMINISTRADOR (CON SEGURIDAD)
@@ -149,7 +149,7 @@ if modo == "Panel Administrador (Tú)":
 
         with st.expander("⚙️ Panel de Gestión: Clientes, Cierre de Ciclos y Recibos", expanded=False):
             st.subheader("➕ Registrar Nuevo Cliente y su Moneda")
-            with st.form(key="form_nuevo_cliente"):
+            with st.form(key="form_nuevo_clientev2"):
                 col_nc1, col_nc2 = st.columns(2)
                 with col_nc1:
                     nuevo_nombre_cli = st.text_input("Nombre de Usuario / Cliente")
@@ -220,77 +220,81 @@ if modo == "Panel Administrador (Tú)":
         st.divider()
 
         logos_por_hacer = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') != "Terminado"]
-        logos_terminados = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') == "Terminado"]
+        logos_terminados = [l for l in logos_activos_admin if l.get('estado', 'Pendiente'] == "Terminado"] if False else [l for l in logos_activos_admin if l.get('estado', 'Pendiente') == "Terminado"]
         logos_ordenados_admin = logos_por_hacer + logos_terminados
 
         st.subheader("📋 Gestión de Trabajos")
 
-        for logo in logos_ordenados_admin:
-            i = next((idx for idx, item in enumerate(st.session_state.logos) if item["id"] == logo["id"]), None)
-            if i is None:
-                continue
-            
-            with st.container():
-                col_img, col_info = st.columns([1, 3])
+        @st.fragment
+        def renderizar_lista_admin(logos_lista):
+            for logo in logos_lista:
+                i = next((idx for idx, item in enumerate(st.session_state.logos) if item["id"] == logo["id"]), None)
+                if i is None:
+                    continue
                 
-                with col_img:
-                    if logo.get('imagen_obj') is not None:
-                        st.image(logo['imagen_obj'], caption="Diseño Original", width=100)
-                        with st.popover("🔍 Ver Grande"):
-                            st.image(logo['imagen_obj'], caption=f"Diseño: {logo.get('nombre')}", use_container_width=True)
-                    else:
-                        st.info("Sin miniatura")
-
-                with col_info:
-                    st.markdown(f"### 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*")
-                    st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Posición:** {logo.get('posicion_logo', 'No especificada')} | **Estado Actual:** `{logo.get('estado', 'Pendiente')}`")
-                    st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
-                    st.write(f"**Archivo cliente:** `📁 {logo.get('archivo', 'Sin archivo')}`")
-                    st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
-                
-                estado_actual = logo.get('estado', 'Pendiente')
-                
-                c1, c2, c3 = st.columns(3)
-                
-                if estado_actual == "Pendiente":
-                    if c1.button("▶ Iniciar (Luz Verde)", key=f"iniciar_{logo['id']}"):
-                        st.session_state.logos[i]['estado'] = "En Progreso"
-                        guardar_datos()
-                        st.rerun()
-                elif estado_actual == "En Progreso":
-                    c1.warning("🟢 En Progreso")
-                    if c2.button("✓ Marcar Terminado", key=f"terminar_{logo['id']}"):
-                        st.session_state.logos[i]['estado'] = "Terminado"
-                        guardar_datos()
-                        st.rerun()
-                else:
-                    c1.success("✅ Terminado")
-                    pago_actual = logo.get('pago', 'Pendiente')
-                    nuevo_pago = c2.selectbox("Estado de Pago", ["Pendiente", "Pagado"], index=0 if pago_actual=="Pendiente" else 1, key=f"pago_{logo['id']}")
-                    if nuevo_pago != pago_actual:
-                        st.session_state.logos[i]['pago'] = nuevo_pago
-                        guardar_datos()
-                        st.rerun()
-
-                with st.form(key=f"form_subida_archivos_{logo['id']}"):
-                    archivos_bordado = st.file_uploader(
-                        "Sube los archivos listos para bordar (.DST / .EMB / .PDF)", 
-                        type=["dst", "emb", "pes", "jef", "pdf"], 
-                        accept_multiple_files=True, 
-                        key=f"bordado_{logo['id']}"
-                    )
-                    btn_guardar_archivos = st.form_submit_button("Guardar Archivos en la Orden")
-                    if btn_guardar_archivos:
-                        if archivos_bordado:
-                            st.session_state.logos[i]['archivos_multiples'] = [{"nombre": f.name, "bytes": f.getvalue()} for f in archivos_bordado]
-                            guardar_datos()
-                            nombres_str = ", ".join([f.name for f in archivos_bordado])
-                            st.success(f"¡Archivos guardados correctamente: {nombres_str}!")
-                            st.rerun()
+                with st.container():
+                    col_img, col_info = st.columns([1, 3])
+                    
+                    with col_img:
+                        if logo.get('imagen_obj') is not None:
+                            st.image(logo['imagen_obj'], caption="Diseño Original", width=100)
+                            with st.popover("🔍 Ver Grande"):
+                                st.image(logo['imagen_obj'], caption=f"Diseño: {logo.get('nombre')}", use_container_width=True)
                         else:
-                            st.warning("Por favor, selecciona al menos un archivo para subir.")
+                            st.info("Sin miniatura")
 
-                st.divider()
+                    with col_info:
+                        st.markdown(f"### 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*")
+                        st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Posición:** {logo.get('posicion_logo', 'No especificada')} | **Estado Actual:** `{logo.get('estado', 'Pendiente')}`")
+                        st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
+                        st.write(f"**Archivo cliente:** `📁 {logo.get('archivo', 'Sin archivo')}`")
+                        st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
+                    
+                    estado_actual = logo.get('estado', 'Pendiente')
+                    
+                    c1, c2, c3 = st.columns(3)
+                    
+                    if estado_actual == "Pendiente":
+                        if c1.button("▶ Iniciar (Luz Verde)", key=f"iniciar_{logo['id']}"):
+                            st.session_state.logos[i]['estado'] = "En Progreso"
+                            guardar_datos()
+                            st.rerun()
+                    elif estado_actual == "En Progreso":
+                        c1.warning("🟢 En Progreso")
+                        if c2.button("✓ Marcar Terminado", key=f"terminar_{logo['id']}"):
+                            st.session_state.logos[i]['estado'] = "Terminado"
+                            guardar_datos()
+                            st.rerun()
+                    else:
+                        c1.success("✅ Terminado")
+                        pago_actual = logo.get('pago', 'Pendiente')
+                        nuevo_pago = c2.selectbox("Estado de Pago", ["Pendiente", "Pagado"], index=0 if pago_actual=="Pendiente" else 1, key=f"pago_{logo['id']}")
+                        if nuevo_pago != pago_actual:
+                            st.session_state.logos[i]['pago'] = nuevo_pago
+                            guardar_datos()
+                            st.rerun()
+
+                    with st.form(key=f"form_subida_archivos_{logo['id']}"):
+                        archivos_bordado = st.file_uploader(
+                            "Sube los archivos listos para bordar (.DST / .EMB / .PDF)", 
+                            type=["dst", "emb", "pes", "jef", "pdf"], 
+                            accept_multiple_files=True, 
+                            key=f"bordado_{logo['id']}"
+                        )
+                        btn_guardar_archivos = st.form_submit_button("Guardar Archivos en la Orden")
+                        if btn_guardar_archivos:
+                            if archivos_bordado:
+                                st.session_state.logos[i]['archivos_multiples'] = [{"nombre": f.name, "bytes": f.getvalue()} for f in archivos_bordado]
+                                guardar_datos()
+                                nombres_str = ", ".join([f.name for f in archivos_bordado])
+                                st.success(f"¡Archivos guardados correctamente: {nombres_str}!")
+                                st.rerun()
+                            else:
+                                st.warning("Por favor, selecciona al menos un archivo para subir.")
+
+                    st.divider()
+
+        renderizar_lista_admin(logos_ordenados_admin)
 
 
 # ==========================================
@@ -432,11 +436,11 @@ elif modo == "Portal de Clientes":
                         else:
                             st.error("Por favor, ingresa un nombre para el logo.")
 
-        # --- CONTENEDOR DINÁMICO PARA FORZAR ACTUALIZACIÓN DE ESTADOS ---
-        contenedor_dinamico = st.container()
-
-        with contenedor_dinamico:
-            logos_por_realizar = [l for l in logos_cliente if l.get('estado') not in ["Terminado", "Archivado/Pagado"]]
+        # --- CONTENEDOR DINÁMICO CON FRAGMENTO PARA ACTUALIZACIÓN EN VIVO ---
+        @st.fragment
+        def renderizar_portal_cliente(nombre_cli, divisa_actual):
+            logos_cli = [l for l in st.session_state.logos if l.get('cliente') == nombre_cli and l.get('estado') != "Archivado/Pagado"]
+            logos_por_realizar = [l for l in logos_cli if l.get('estado') not in ["Terminado", "Archivado/Pagado"]]
             
             st.subheader("⏳ Trabajos por Realizar y Turno en Cola")
             if not logos_por_realizar:
@@ -501,11 +505,11 @@ elif modo == "Portal de Clientes":
                         unsafe_allow_html=True
                     )
                 
-                precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
+                precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa_actual else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
                 st.write(f"Precio estimado: **{precio_mostrar}**")
                 st.divider()
 
-            logos_realizados = [l for l in logos_cliente if l.get('estado') == "Terminado"]
+            logos_realizados = [l for l in logos_cli if l.get('estado') == "Terminado"]
             
             st.subheader("✅ Trabajos Realizados y Descargas")
             if not logos_realizados:
@@ -549,6 +553,8 @@ elif modo == "Portal de Clientes":
                     else:
                         st.info("📁 Los archivos de bordado estarán disponibles para descarga en breve.")
                     
-                    precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
+                    precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa_actual else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
                     st.write(f"Precio final: **{precio_mostrar}** | Pago: **{logo.get('pago', 'Pendiente')}**")
                     st.divider()
+
+        renderizar_portal_cliente(nombre_cliente, divisa)
