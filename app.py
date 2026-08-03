@@ -4,6 +4,7 @@ from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
 import json
 import os
+import io
 
 st.set_page_config(page_title="Pixel Thread - Portal Profesional", layout="centered")
 
@@ -185,7 +186,13 @@ if modo == "Panel Administrador (Tú)":
             col_img, col_info = st.columns([1, 3])
             
             with col_img:
-                if logo.get('imagen_obj') is not None:
+                if logo.get('imagen_bytes'):
+                    try:
+                        img_cargada = Image.open(io.BytesIO(logo['imagen_bytes']))
+                        st.image(img_cargada, caption="Diseño Original", width=100)
+                    except Exception:
+                        st.info("Sin miniatura")
+                elif logo.get('imagen_obj') is not None:
                     st.image(logo['imagen_obj'], caption="Diseño Original", width=100)
                 else:
                     st.info("Sin miniatura")
@@ -339,6 +346,18 @@ def render_portal_cliente(nombre_cliente):
                 key=f"inp_file_{nombre_cliente}"
             )
             
+            # --- VISTA PREVIA INSTANTÁNEA DE LA MINIATURA ---
+            if archivos_subidos:
+                st.write("🖼️ **Vista previa de la miniatura:**")
+                cols_prev = st.columns(min(len(archivos_subidos), 4))
+                for idx, arch in enumerate(archivos_subidos):
+                    try:
+                        img_prev = Image.open(arch)
+                        with cols_prev[idx % 4]:
+                            st.image(img_prev, caption=arch.name, width=80)
+                    except Exception:
+                        pass
+
             tipo_aplicacion = st.radio("¿Para qué tipo de soporte es el bordado?", ["Tela (Camisetas, Polos, etc.)", "Gorra"], key=f"tipo_app_{nombre_cliente}")
             
             ubicacion_gorra = "N/A"
@@ -356,10 +375,12 @@ def render_portal_cliente(nombre_cliente):
             if st.button("Enviar Logo a Pixel Thread", key=f"btn_enviar_{nombre_cliente}"):
                 if nombre_logo:
                     nombre_archivo = ", ".join([f.name for f in archivos_subidos]) if archivos_subidos else "Sin archivo adjunto"
-                    img_obj = None
+                    
+                    # Guardamos los bytes de la primera imagen para que se mantenga la miniatura
+                    img_bytes_guardar = None
                     if archivos_subidos:
                         try:
-                            img_obj = Image.open(archivos_subidos[0])
+                            img_bytes_guardar = archivos_subidos[0].getvalue()
                         except Exception:
                             pass
 
@@ -375,7 +396,8 @@ def render_portal_cliente(nombre_cliente):
                         "ubicacion_gorra": ubicacion_gorra,
                         "detalle_gorra": detalle_gorra,
                         "comentario": comentario_cliente if comentario_cliente else "Ninguno",
-                        "archivo": nombre_archivo
+                        "archivo": nombre_archivo,
+                        "imagen_bytes": img_bytes_guardar
                     }
                     st.session_state.logos.append(nuevo_logo)
                     guardar_datos()
@@ -394,7 +416,13 @@ def render_portal_cliente(nombre_cliente):
     for logo in logos_por_realizar:
         col_img, col_info = st.columns([1, 3])
         with col_img:
-            if logo.get('imagen_obj') is not None:
+            if logo.get('imagen_bytes'):
+                try:
+                    img_cargada = Image.open(io.BytesIO(logo['imagen_bytes']))
+                    st.image(img_cargada, caption="Tu Diseño", width=100)
+                except Exception:
+                    st.info("Sin miniatura")
+            elif logo.get('imagen_obj') is not None:
                 st.image(logo['imagen_obj'], caption="Tu Diseño", width=100)
             else:
                 st.info("Sin miniatura")
@@ -448,7 +476,13 @@ def render_portal_cliente(nombre_cliente):
         for logo in logos_realizados:
             col_img, col_info = st.columns([1, 3])
             with col_img:
-                if logo.get('imagen_obj') is not None:
+                if logo.get('imagen_bytes'):
+                    try:
+                        img_cargada = Image.open(io.BytesIO(logo['imagen_bytes']))
+                        st.image(img_cargada, caption="Diseño", width=100)
+                    except Exception:
+                        st.info("Sin miniatura")
+                elif logo.get('imagen_obj') is not None:
                     st.image(logo['imagen_obj'], caption="Diseño", width=100)
                 else:
                     st.info("Sin miniatura")
