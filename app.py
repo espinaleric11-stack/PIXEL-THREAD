@@ -56,7 +56,7 @@ if modo == "Panel Administrador (Tú)":
 
     st.divider()
 
-    # --- SECCIÓN PRINCIPAL: AGREGAR NUEVOS CLIENTES (¡ARRIBA PARA FÁCIL ACCESO!) ---
+    # --- SECCIÓN PRINCIPAL: AGREGAR NUEVOS CLIENTES ---
     st.subheader("➕ Registrar Nuevo Cliente y su Divisa")
     with st.form(key="form_nuevo_cliente"):
         col_nc1, col_nc2 = st.columns(2)
@@ -79,26 +79,37 @@ if modo == "Panel Administrador (Tú)":
 
     st.divider()
 
-    # --- SECCIÓN DE CONTROL Y REINICIO POR CLIENTE ---
-    st.subheader("👥 Control y Cierre de Ciclo por Cliente")
-    st.write("Revisa los pagos y reinicia el acumulador semanal individual de cada cliente cuando se complete el pago:")
+    # --- SECCIÓN DE CONTROL, CIERRE DE CICLO Y ELIMINACIÓN POR CLIENTE ---
+    st.subheader("👥 Control, Cierre de Ciclo y Gestión de Clientes")
+    st.write("Revisa los pagos, reinicia el acumulador semanal individual o elimina usuarios según necesites:")
     
-    for cli in st.session_state.clientes_registrados.keys():
+    for cli in list(st.session_state.clientes_registrados.keys()):
         logos_cli_term = [l for l in st.session_state.logos if l.get('cliente') == cli and l.get('estado', 'Pendiente') == "Terminado"]
         sub_usd = sum(l.get('precio_usd', 5.0) for l in logos_cli_term)
         sub_dop = sum(l.get('precio_dop', 300.0) for l in logos_cli_term)
         
         with st.expander(f"👤 Cliente: {cli} — Acumulado Terminado: ${sub_usd:.2f} USD / RD$ {sub_dop:,.2f}"):
-            c_info, c_btn = st.columns([2, 1])
+            c_info, c_btn_reset, c_btn_del = st.columns([2, 1, 1])
             with c_info:
                 st.write(f"Trabajos terminados pendientes de cerrar ciclo: **{len(logos_cli_term)}**")
-            with c_btn:
-                if st.button(f"🔄 Reiniciar Ciclo de {cli}", key=f"reset_cli_{cli}"):
+            with c_btn_reset:
+                if st.button(f"🔄 Reiniciar Ciclo", key=f"reset_cli_{cli}"):
                     for logo in st.session_state.logos:
                         if logo.get('cliente') == cli and logo.get('estado', 'Pendiente') == "Terminado":
                             logo['pago'] = "Pagado"
                             logo['estado'] = "Archivado/Pagado"
                     st.success(f"¡Ciclo de {cli} reiniciado con éxito!")
+                    st.rerun()
+            with c_btn_del:
+                if st.button(f"🗑️ Eliminar Usuario", key=f"del_cli_{cli}"):
+                    # 1. Eliminar de clientes registrados
+                    del st.session_state.clientes_registrados[cli]
+                    # 2. Eliminar sus recibos si existen
+                    if cli in st.session_state.recibos_pago:
+                        del st.session_state.recibos_pago[cli]
+                    # 3. Opcional: Eliminar o desvincular sus logos asociados
+                    st.session_state.logos = [l for l in st.session_state.logos if l.get('cliente') != cli]
+                    st.warning(f"¡El usuario '{cli}' y sus datos asociados han sido eliminados!")
                     st.rerun()
 
     st.divider()
@@ -190,8 +201,8 @@ if modo == "Panel Administrador (Tú)":
     if st.button("Generar Corte Semanal"):
         fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         contenido_factura = f"=========================================\n"
-        contenido_factura += f"          PIXEL THREAD - FACTURA         \n"
-        contenido_factura += f"            CORTE SEMANAL GENERAL        \n"
+        contenido_factura += f"         PIXEL THREAD - FACTURA          \n"
+        contenido_factura += f"           CORTE SEMANAL GENERAL         \n"
         contenido_factura += f"=========================================\n"
         contenido_factura += f"Fecha de emisión: {fecha_actual}\n\n"
         
