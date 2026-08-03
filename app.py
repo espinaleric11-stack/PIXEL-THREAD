@@ -220,7 +220,7 @@ if modo == "Panel Administrador (Tú)":
         st.divider()
 
         logos_por_hacer = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') != "Terminado"]
-        logos_terminados = [l for l in logos_activos_admin if l.get('estado', 'Pendiente'] == "Terminado"] if False else [l for l in logos_activos_admin if l.get('estado', 'Pendiente') == "Terminado"]
+        logos_terminados = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') == "Terminado"]
         logos_ordenados_admin = logos_por_hacer + logos_terminados
 
         st.subheader("📋 Gestión de Trabajos")
