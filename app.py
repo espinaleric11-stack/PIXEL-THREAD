@@ -97,75 +97,77 @@ if modo == "Panel Administrador (Tú)":
 
     st.divider()
 
-    st.subheader("➕ Registrar Nuevo Cliente y su Divisa")
-    with st.form(key="form_nuevo_cliente"):
-        col_nc1, col_nc2 = st.columns(2)
-        with col_nc1:
-            nuevo_nombre_cli = st.text_input("Nombre del Cliente o Empresa")
-        with col_nc2:
-            nueva_divisa_cli = st.selectbox("Moneda Principal / Divisa", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"])
-        
-        btn_crear_cli = st.form_submit_button("Registrar Cliente")
-        if btn_crear_cli:
-            if nuevo_nombre_cli:
-                if nuevo_nombre_cli in st.session_state.clientes_registrados:
-                    st.error("¡Este cliente ya está registrado!")
+    # --- SECCIÓN ENMASCARADA EN UN PANEL DESPLEGABLE ---
+    with st.expander("➕ Registrar Nuevo Cliente, Control y Recibos"):
+        st.subheader("➕ Registrar Nuevo Cliente y su Divisa")
+        with st.form(key="form_nuevo_cliente"):
+            col_nc1, col_nc2 = st.columns(2)
+            with col_nc1:
+                nuevo_nombre_cli = st.text_input("Nombre del Cliente o Empresa")
+            with col_nc2:
+                nueva_divisa_cli = st.selectbox("Moneda Principal / Divisa", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"])
+            
+            btn_crear_cli = st.form_submit_button("Registrar Cliente")
+            if btn_crear_cli:
+                if nuevo_nombre_cli:
+                    if nuevo_nombre_cli in st.session_state.clientes_registrados:
+                        st.error("¡Este cliente ya está registrado!")
+                    else:
+                        st.session_state.clientes_registrados[nuevo_nombre_cli] = nueva_divisa_cli
+                        guardar_datos()
+                        st.success(f"¡Cliente '{nuevo_nombre_cli}' agregado con éxito! Ya aparece en el menú lateral.")
+                        st.rerun()
                 else:
-                    st.session_state.clientes_registrados[nuevo_nombre_cli] = nueva_divisa_cli
-                    guardar_datos()
-                    st.success(f"¡Cliente '{nuevo_nombre_cli}' agregado con éxito! Ya aparece en el menú lateral.")
-                    st.rerun()
-            else:
-                st.error("Por favor, ingresa un nombre para el cliente.")
+                    st.error("Por favor, ingresa un nombre para el cliente.")
 
-    st.divider()
+        st.divider()
 
-    st.subheader("👥 Control, Cierre de Ciclo y Gestión de Clientes")
-    st.write("Revisa los pagos, reinicia el acumulador semanal individual o elimina usuarios según necesites:")
-    
-    for cli in list(st.session_state.clientes_registrados.keys()):
-        logos_cli_term = [l for l in st.session_state.logos if l.get('cliente') == cli and l.get('estado', 'Pendiente') == "Terminado"]
-        sub_usd = sum(l.get('precio_usd', 5.0) for l in logos_cli_term)
-        sub_dop = sum(l.get('precio_dop', 300.0) for l in logos_cli_term)
+        st.subheader("👥 Control, Cierre de Ciclo y Gestión de Clientes")
+        st.write("Revisa los pagos, reinicia el acumulador semanal individual o elimina usuarios según necesites:")
         
-        with st.expander(f"👤 Cliente: {cli} — Acumulado Terminado: ${sub_usd:.2f} USD / RD$ {sub_dop:,.2f}"):
-            c_info, c_btn_reset, c_btn_del = st.columns([2, 1, 1])
-            with c_info:
-                st.write(f"Trabajos terminados pendientes de cerrar ciclo: **{len(logos_cli_term)}**")
-            with c_btn_reset:
-                if st.button(f"🔄 Reiniciar Ciclo", key=f"reset_cli_{cli}"):
-                    for logo in st.session_state.logos:
-                        if logo.get('cliente') == cli and logo.get('estado', 'Pendiente') == "Terminado":
-                            logo['pago'] = "Pagado"
-                            logo['estado'] = "Archivado/Pagado"
-                    guardar_datos()
-                    st.success(f"¡Ciclo de {cli} reiniciado con éxito!")
-                    st.rerun()
-            with c_btn_del:
-                if st.button(f"🗑️ Eliminar Usuario", key=f"del_cli_{cli}"):
-                    del st.session_state.clientes_registrados[cli]
-                    if cli in st.session_state.recibos_pago:
-                        del st.session_state.recibos_pago[cli]
-                    st.session_state.logos = [l for l in st.session_state.logos if l.get('cliente') != cli]
-                    guardar_datos()
-                    st.warning(f"¡El usuario '{cli}' y sus datos asociados han sido eliminados!")
-                    st.rerun()
+        for cli in list(st.session_state.clientes_registrados.keys()):
+            logos_cli_term = [l for l in st.session_state.logos if l.get('cliente') == cli and l.get('estado', 'Pendiente') == "Terminado"]
+            sub_usd = sum(l.get('precio_usd', 5.0) for l in logos_cli_term)
+            sub_dop = sum(l.get('precio_dop', 300.0) for l in logos_cli_term)
+            
+            with st.expander(f"👤 Cliente: {cli} — Acumulado Terminado: ${sub_usd:.2f} USD / RD$ {sub_dop:,.2f}"):
+                c_info, c_btn_reset, c_btn_del = st.columns([2, 1, 1])
+                with c_info:
+                    st.write(f"Trabajos terminados pendientes de cerrar ciclo: **{len(logos_cli_term)}**")
+                with c_btn_reset:
+                    if st.button(f"🔄 Reiniciar Ciclo", key=f"reset_cli_{cli}"):
+                        for logo in st.session_state.logos:
+                            if logo.get('cliente') == cli and logo.get('estado', 'Pendiente') == "Terminado":
+                                logo['pago'] = "Pagado"
+                                logo['estado'] = "Archivado/Pagado"
+                        guardar_datos()
+                        st.success(f"¡Ciclo de {cli} reiniciado con éxito!")
+                        st.rerun()
+                with c_btn_del:
+                    if st.button(f"🗑️ Eliminar Usuario", key=f"del_cli_{cli}"):
+                        del st.session_state.clientes_registrados[cli]
+                        if cli in st.session_state.recibos_pago:
+                            del st.session_state.recibos_pago[cli]
+                        st.session_state.logos = [l for l in st.session_state.logos if l.get('cliente') != cli]
+                        guardar_datos()
+                        st.warning(f"¡El usuario '{cli}' y sus datos asociados han sido eliminados!")
+                        st.rerun()
 
-    st.divider()
+        st.divider()
 
-    st.subheader("🧾 Recibos de Pago Subidos por Clientes")
-    if st.session_state.recibos_pago:
-        for cli, recibo_info in st.session_state.recibos_pago.items():
-            with st.expander(f"📥 Ver Recibo de Pago de: {cli} ({recibo_info['nombre_archivo']})"):
-                st.download_button(
-                    label=f"Descargar comprobante de {cli}",
-                    data=recibo_info['bytes'],
-                    file_name=recibo_info['nombre_archivo'],
-                    mime="application/octet-stream",
-                    key=f"dl_recibo_{cli}"
-                )
-    else:
-        st.info("No hay recibos de pago subidos por los clientes todavía.")
+        st.subheader("🧾 Recibos de Pago Subidos por Clientes")
+        if st.session_state.recibos_pago:
+            for cli, recibo_info in st.session_state.recibos_pago.items():
+                with st.expander(f"📥 Ver Recibo de Pago de: {cli} ({recibo_info['nombre_archivo']})"):
+                    st.download_button(
+                        label=f"Descargar comprobante de {cli}",
+                        data=recibo_info['bytes'],
+                        file_name=recibo_info['nombre_archivo'],
+                        mime="application/octet-stream",
+                        key=f"dl_recibo_{cli}"
+                    )
+        else:
+            st.info("No hay recibos de pago subidos por los clientes todavía.")
 
     st.divider()
 
