@@ -16,29 +16,30 @@ if os.path.exists(logo_path):
     with open(logo_path, "rb") as f:
         logo_base64 = base64.b64encode(f.read()).decode("utf-8")
 
-# --- ESTILOS CSS PERSONALIZADOS (TEMA FUTURISTA / CYBERPUNK CON LOGO GIGANTE EN EL FONDO) ---
+# --- ESTILOS CSS PERSONALIZADOS (FONDO CON TU LOGO CENTRADO Y FLUIDO) ---
 st.markdown(f"""
     <style>
     .stApp {{
-        background: linear-gradient(135deg, #0a0f1d 0%, #111827 50%, #1f1128 100%);
+        background: linear-gradient(135deg, rgba(10, 15, 29, 0.93) 0%, rgba(17, 24, 39, 0.93) 50%, rgba(31, 17, 40, 0.93) 100%);
         color: #e2e8f0;
     }}
     
-    /* Fondo con el logo integrado en la esquina inferior derecha en grande y translúcido */
+    /* Fondo con tu logo corporativo integrado como marca de agua gigante, elegante y centrada */
     .stApp::before {{
         content: "";
         position: fixed;
-        bottom: -20px;
-        right: -20px;
-        width: 35vw;
-        height: 35vw;
-        max-width: 450px;
-        max-height: 450px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 60vw;
+        height: 60vw;
+        max-width: 650px;
+        max-height: 650px;
         background-image: url("data:image/jpeg;base64,{logo_base64}");
         background-size: contain;
         background-repeat: no-repeat;
-        background-position: bottom right;
-        opacity: 0.05;
+        background-position: center;
+        opacity: 0.08;
         z-index: 0;
         pointer-events: none;
     }}
@@ -49,7 +50,7 @@ st.markdown(f"""
     }}
 
     div[data-testid="stMetric"] {{
-        background: rgba(17, 24, 39, 0.7);
+        background: rgba(17, 24, 39, 0.85);
         border: 1px solid rgba(0, 255, 204, 0.2);
         padding: 15px;
         border-radius: 12px;
