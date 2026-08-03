@@ -175,11 +175,13 @@ if modo == "Panel Administrador (Tú)":
     logos_activos_admin = [l for l in st.session_state.logos if l.get('estado') != "Archivado/Pagado"]
     logos_por_hacer = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') != "Terminado"]
     logos_terminados = [l for l in logos_activos_admin if l.get('estado', 'Pendiente') == "Terminado"]
-    logos_ordenados_admin = logos_por_hacer + logos_terminados
 
-    st.subheader("📋 Gestión de Trabajos")
+    # 1. GESTIÓN DE TRABAJOS ACTIVOS (PENDIENTES, EN REVISIÓN, EN PROGRESO)
+    st.subheader("📋 Gestión de Trabajos (Pendientes y En Proceso)")
+    if not logos_por_hacer:
+        st.info("No hay trabajos activos pendientes o en proceso.")
 
-    for logo in logos_ordenados_admin:
+    for logo in logos_por_hacer:
         i = st.session_state.logos.index(logo)
         
         with st.container():
@@ -200,6 +202,7 @@ if modo == "Panel Administrador (Tú)":
             with col_info:
                 st.markdown(f"### 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*")
                 st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
+                st.write(f"**Posición de bordado:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
                 st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
                 st.write(f"**Archivo cliente:** `📁 {logo.get('archivo', 'Sin archivo')}`")
                 st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
@@ -225,14 +228,6 @@ if modo == "Panel Administrador (Tú)":
                     st.session_state.logos[i]['estado'] = "Terminado"
                     guardar_datos()
                     st.rerun()
-            else:
-                c1.success("✅ Terminado")
-                pago_actual = logo.get('pago', 'Pendiente')
-                nuevo_pago = c2.selectbox("Estado de Pago", ["Pendiente", "Pagado"], index=0 if pago_actual=="Pendiente" else 1, key=f"pago_{logo['id']}")
-                if nuevo_pago != pago_actual:
-                    st.session_state.logos[i]['pago'] = nuevo_pago
-                    guardar_datos()
-                    st.rerun()
 
             with st.expander("📤 Subir múltiples archivos de bordado (.DST / .EMB / .PDF)"):
                 archivos_bordado = st.file_uploader(
@@ -240,6 +235,60 @@ if modo == "Panel Administrador (Tú)":
                     type=["dst", "emb", "pes", "jef", "pdf"], 
                     accept_multiple_files=True, 
                     key=f"bordado_{logo['id']}"
+                )
+                if archivos_bordado:
+                    logo['archivos_multiples'] = [{"nombre": f.name, "bytes": f.getvalue()} for f in archivos_bordado]
+                    guardar_datos()
+                    nombres_str = ", ".join([f.name for f in archivos_bordado])
+                    st.success(f"Archivos guardados correctamente: {nombres_str}")
+
+            st.divider()
+
+    # 2. TRABAJOS YA REALIZADOS (ABAJO DEL TODO EN ADMIN)
+    st.subheader("✅ Trabajos Ya Realizados")
+    if not logos_terminados:
+        st.info("No hay trabajos terminados todavía.")
+
+    for logo in logos_terminados:
+        i = st.session_state.logos.index(logo)
+        with st.container():
+            col_img, col_info = st.columns([1, 3])
+            
+            with col_img:
+                if logo.get('imagen_bytes'):
+                    try:
+                        img_cargada = Image.open(io.BytesIO(logo['imagen_bytes']))
+                        st.image(img_cargada, caption="Diseño Original", width=100)
+                    except Exception:
+                        st.info("Sin miniatura")
+                elif logo.get('imagen_obj') is not None:
+                    st.image(logo['imagen_obj'], caption="Diseño Original", width=100)
+                else:
+                    st.info("Sin miniatura")
+
+            with col_info:
+                st.markdown(f"### 🧵 {logo.get('nombre', 'Sin nombre')} *({logo.get('cliente', 'Cliente')})*")
+                st.write(f"**Tipo:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
+                st.write(f"**Posición de bordado:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
+                st.write(f"**Comentario:** {logo.get('comentario', 'Ninguno')}")
+                st.write(f"**Archivo cliente:** `📁 {logo.get('archivo', 'Sin archivo')}`")
+                st.write(f"**Precio:** ${logo.get('precio_usd', 5.0):.2f} USD / RD${logo.get('precio_dop', 300.0):.2f}")
+            
+            c1, c2, c3 = st.columns(3)
+            c1.success("✅ Terminado")
+            pago_actual = logo.get('pago', 'Pendiente')
+            nuevo_pago = c2.selectbox("Estado de Pago", ["Pendiente", "Pagado"], index=0 if pago_actual=="Pendiente" else 1, key=f"pago_{logo['id']}")
+            if nuevo_pago != pago_actual:
+                st.session_state.logos[i]['pago'] = nuevo_pago
+                guardar_datos()
+                st.rerun()
+
+            with st.expander("📤 Subir múltiples archivos de bordado (.DST / .EMB / .PDF)"):
+                archivos_bordado = st.file_uploader(
+                    "Sube los archivos listos para bordar", 
+                    type=["dst", "emb", "pes", "jef", "pdf"], 
+                    accept_multiple_files=True, 
+                    key=f"bordado_term_{logo['id']}"
                 )
                 if archivos_bordado:
                     logo['archivos_multiples'] = [{"nombre": f.name, "bytes": f.getvalue()} for f in archivos_bordado]
@@ -369,6 +418,23 @@ def render_portal_cliente(nombre_cliente):
                     detalle_gorra = st.radio("Selecciona el estilo:", ["3D (Puff)", "Plano (Flat)"], key=f"detalle_{nombre_cliente}")
                 else:
                     detalle_gorra = "Plano (Flat)"
+
+            # --- NUEVO CAMPO: POSICIÓN EN LA QUE QUEDA EL LOGO ---
+            posicion_trabajo = st.selectbox(
+                "Posición en la prenda para trabajar el logo:",
+                [
+                    "Centro / Pecho estándar",
+                    "Pecho izquierdo (Corazón)",
+                    "Pecho derecho",
+                    "Espalda superior (Ancha)",
+                    "Espalda centro",
+                    "Manga izquierda",
+                    "Manga derecha",
+                    "Cuello / Nuca",
+                    "Otro / Especificar en comentarios"
+                ],
+                key=f"posicion_{nombre_cliente}"
+            )
             
             comentario_cliente = st.text_area("Comentarios o instrucciones especiales", key=f"inp_com_{nombre_cliente}")
             
@@ -376,7 +442,6 @@ def render_portal_cliente(nombre_cliente):
                 if nombre_logo:
                     nombre_archivo = ", ".join([f.name for f in archivos_subidos]) if archivos_subidos else "Sin archivo adjunto"
                     
-                    # Guardamos los bytes de la primera imagen para que se mantenga la miniatura
                     img_bytes_guardar = None
                     if archivos_subidos:
                         try:
@@ -395,6 +460,7 @@ def render_portal_cliente(nombre_cliente):
                         "tipo": tipo_aplicacion,
                         "ubicacion_gorra": ubicacion_gorra,
                         "detalle_gorra": detalle_gorra,
+                        "posicion_trabajo": posicion_trabajo,
                         "comentario": comentario_cliente if comentario_cliente else "Ninguno",
                         "archivo": nombre_archivo,
                         "imagen_bytes": img_bytes_guardar
@@ -408,7 +474,9 @@ def render_portal_cliente(nombre_cliente):
                     st.error("Por favor, ingresa un nombre para el logo.")
 
     logos_por_realizar = [l for l in logos_cliente if l.get('estado', 'Pendiente') != "Terminado"]
-    
+    logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
+
+    # TRABAJOS POR REALIZAR
     st.subheader("⏳ Trabajos por Realizar")
     if not logos_por_realizar:
         st.info("No tienes trabajos pendientes actualmente.")
@@ -430,6 +498,7 @@ def render_portal_cliente(nombre_cliente):
         with col_info:
             st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
             st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
+            st.write(f"**Posición:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
             st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
             st.write(f"**Archivos:** `📁 {logo.get('archivo', 'N/A')}`")
         
@@ -470,7 +539,7 @@ def render_portal_cliente(nombre_cliente):
         st.write(f"Precio estimado: **{precio_mostrar}**")
         st.divider()
 
-    logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
+    # TRABAJOS REALIZADOS (ABAJO DEL TODO EN CLIENTE)
     if logos_realizados:
         st.subheader("✅ Trabajos Realizados y Descargas")
         for logo in logos_realizados:
@@ -490,6 +559,7 @@ def render_portal_cliente(nombre_cliente):
             with col_info:
                 st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
                 st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Ubicación:** {logo.get('ubicacion_gorra', 'N/A')} | **Estilo:** {logo.get('detalle_gorra', 'N/A')}")
+                st.write(f"**Posición:** `{logo.get('posicion_trabajo', 'Centro / Pecho estándar')}`")
                 st.write(f"**Notas:** {logo.get('comentario', 'Ninguno')}")
             
             st.success("✅ Estado: Digitalización Finalizada")
