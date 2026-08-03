@@ -4,7 +4,7 @@ from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="Pixel Thread - Portal Profesional", layout="centered")
 
-# --- ACTUALIZACIÓN AUTOMÁTICA EXACTA CADA 2 SEGUNDOS ---
+# --- ACTUALIZACIÓN AUTOMÁTICA CADA 2 SEGUNDOS ---
 st_autorefresh(interval=2000, limit=None, key="autorefresh_global")
 
 # --- INICIALIZAR LISTA DE CLIENTES Y DIVISAS ---
@@ -379,119 +379,123 @@ elif modo == "Portal de Clientes":
                     else:
                         st.error("Por favor, ingresa un nombre para el logo.")
 
-        # Filtrar exclusivamente los que NO están terminados para la sección de pendientes
-        logos_por_realizar = [l for l in logos_cliente if l.get('estado', 'Pendiente') != "Terminado"]
-        
-        st.subheader("⏳ Trabajos por Realizar y Turno en Cola")
-        if not logos_por_realizar:
-            st.info("No tienes trabajos pendientes actualmente.")
+        # --- CONTENEDOR DINÁMICO PARA FORZAR ACTUALIZACIÓN DE ESTADOS ---
+        contenedor_dinamico = st.container()
 
-        cola_global_activa = [l for l in st.session_state.logos if l.get('estado', 'Pendiente') != "Terminado" and l.get('estado') != "Archivado/Pagado"]
+        with contenedor_dinamico:
+            # Filtrar exclusivamente los que NO están terminados para la sección de pendientes
+            logos_por_realizar = [l for l in logos_cliente if l.get('estado', 'Pendiente') != "Terminado"]
+            
+            st.subheader("⏳ Trabajos por Realizar y Turno en Cola")
+            if not logos_por_realizar:
+                st.info("No tienes trabajos pendientes actualmente.")
 
-        for logo in logos_por_realizar:
-            if logo in cola_global_activa:
-                posicion_en_cola = cola_global_activa.index(logo) + 1
-            else:
-                posicion_en_cola = "?"
+            cola_global_activa = [l for l in st.session_state.logos if l.get('estado', 'Pendiente') != "Terminado" and l.get('estado') != "Archivado/Pagado"]
 
-            col_img, col_info = st.columns([1, 3])
-            with col_img:
-                if logo.get('imagen_obj') is not None:
-                    st.image(logo['imagen_obj'], caption="Tu Diseño", width=100)
-                    with st.popover("🔍 Ver Grande"):
-                        st.image(logo['imagen_obj'], caption=f"Tu Diseño: {logo.get('nombre')}", use_container_width=True)
+            for logo in logos_por_realizar:
+                if logo in cola_global_activa:
+                    posicion_en_cola = cola_global_activa.index(logo) + 1
                 else:
-                    st.info("Sin miniatura")
-                    
-            with col_info:
-                st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
-                st.markdown(f"🎟️ Posición en la cola de producción: <span style='color: #10b981; font-weight: bold;'>#{posicion_en_cola}</span>", unsafe_allow_html=True)
-                st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Posición prenda:** {logo.get('posicion_logo', 'No especificada')}")
-                if logo.get('tipo') == "Gorra":
-                    st.write(f"**Detalle Gorra:** {logo.get('ubicacion_gorra', 'N/A')} ({logo.get('detalle_gorra', 'N/A')})")
-                st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
-                st.write(f"**Archivos:** `📁 {logo.get('archivo', 'N/A')}`")
-            
-            estado_logo = logo.get('estado', 'Pendiente')
-            if estado_logo == "Pendiente":
-                st.info(f"⏳ Estado: Recibido / Turno #{posicion_en_cola} en espera de inicio")
-                col_mod, col_elim = st.columns(2)
-                with col_mod:
-                    with st.popover("✏️ Modificar Orden"):
-                        with st.form(key=f"edit_form_{logo['id']}"):
-                            nuevo_nombre = st.text_input("Nuevo nombre", value=logo.get('nombre', ''))
-                            nueva_pos = st.selectbox("Nueva posición prenda", ["Pecho Izquierdo", "Pecho Derecho", "Centro Pecho", "Espalda Alta", "Espalda Centro", "Manga Izquierda", "Manga Derecha", "Gorra Frontal", "Gorra Lateral", "Gorra Trasera", "Otra posición"], index=0)
-                            nuevo_comentario = st.text_area("Nuevas notas", value=logo.get('comentario', ''))
-                            if st.form_submit_button("Guardar Cambios"):
-                                logo['nombre'] = nuevo_nombre
-                                logo['posicion_logo'] = nueva_pos
-                                logo['comentario'] = nuevo_comentario
-                                st.success("¡Modificado!")
-                                st.rerun()
-                with col_elim:
-                    if st.button("🗑️ Eliminar", key=f"del_{logo['id']}"):
-                        st.session_state.logos.remove(logo)
-                        st.warning("Orden eliminada.")
-                        st.rerun()
-            elif estado_logo == "En Progreso":
-                st.markdown(
-                    f"""
-                    <div style="background-color: #d1fae5; border-left: 6px solid #10b981; padding: 10px; border-radius: 5px; color: #065f46; font-weight: bold;">
-                        🟢 ¡DIGITALIZANDO EN PROGRESO! (Tu turno #{posicion_en_cola} se está trabajando ahora mismo - Bloqueado para cambios)
-                    </div>
-                    """, 
-                    unsafe_allow_html=True
-                )
-            
-            precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
-            st.write(f"Precio estimado: **{precio_mostrar}**")
-            st.divider()
+                    posicion_en_cola = "?"
 
-        # Filtrar exclusivamente los terminados para la sección de entregas
-        logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
-        
-        st.subheader("✅ Trabajos Realizados y Descargas")
-        if not logos_realizados:
-            st.info("Aún no tienes trabajos terminados listos para descarga.")
-        else:
-            for logo in logos_realizados:
                 col_img, col_info = st.columns([1, 3])
                 with col_img:
                     if logo.get('imagen_obj') is not None:
-                        st.image(logo['imagen_obj'], caption="Diseño", width=100)
+                        st.image(logo['imagen_obj'], caption="Tu Diseño", width=100)
                         with st.popover("🔍 Ver Grande"):
-                            st.image(logo['imagen_obj'], caption=f"Diseño Terminado: {logo.get('nombre')}", use_container_width=True)
+                            st.image(logo['imagen_obj'], caption=f"Tu Diseño: {logo.get('nombre')}", use_container_width=True)
                     else:
                         st.info("Sin miniatura")
                         
                 with col_info:
                     st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
+                    st.markdown(f"🎟️ Posición en la cola de producción: <span style='color: #10b981; font-weight: bold;'>#{posicion_en_cola}</span>", unsafe_allow_html=True)
                     st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Posición prenda:** {logo.get('posicion_logo', 'No especificada')}")
-                    st.write(f"**Notas:** {logo.get('comentario', 'Ninguno')}")
+                    if logo.get('tipo') == "Gorra":
+                        st.write(f"**Detalle Gorra:** {logo.get('ubicacion_gorra', 'N/A')} ({logo.get('detalle_gorra', 'N/A')})")
+                    st.write(f"**Tus notas:** {logo.get('comentario', 'Ninguno')}")
+                    st.write(f"**Archivos:** `📁 {logo.get('archivo', 'N/A')}`")
                 
-                st.success("✅ Estado: Digitalización Finalizada")
-                
-                if 'archivos_multiples' in logo and logo['archivos_multiples']:
-                    st.write("⬇️ **Descarga tus archivos listos:**")
-                    for idx, arch in enumerate(logo['archivos_multiples']):
-                        st.download_button(
-                            label=f"Descargar: {arch['nombre']}",
-                            data=arch['bytes'],
-                            file_name=arch['nombre'],
-                            mime="application/octet-stream",
-                            key=f"dl_multi_{logo['id']}_{idx}"
-                        )
-                elif 'archivo_bordado_bytes' in logo and logo['archivo_bordado_bytes']:
-                    st.download_button(
-                        label=f"⬇️ Descargar Archivo Listo: {logo.get('archivo_bordado_nombre', 'bordado.dst')}",
-                        data=logo['archivo_bordado_bytes'],
-                        file_name=logo.get('archivo_bordado_nombre', 'bordado.dst'),
-                        mime="application/octet-stream",
-                        key=f"dl_{logo['id']}"
+                estado_logo = logo.get('estado', 'Pendiente')
+                if estado_logo == "Pendiente":
+                    st.info(f"⏳ Estado: Recibido / Turno #{posicion_en_cola} en espera de inicio")
+                    col_mod, col_elim = st.columns(2)
+                    with col_mod:
+                        with st.popover("✏️ Modificar Orden"):
+                            with st.form(key=f"edit_form_{logo['id']}"):
+                                nuevo_nombre = st.text_input("Nuevo nombre", value=logo.get('nombre', ''))
+                                nueva_pos = st.selectbox("Nueva posición prenda", ["Pecho Izquierdo", "Pecho Derecho", "Centro Pecho", "Espalda Alta", "Espalda Centro", "Manga Izquierda", "Manga Derecha", "Gorra Frontal", "Gorra Lateral", "Gorra Trasera", "Otra posición"], index=0)
+                                nuevo_comentario = st.text_area("Nuevas notas", value=logo.get('comentario', ''))
+                                if st.form_submit_button("Guardar Cambios"):
+                                    logo['nombre'] = nuevo_nombre
+                                    logo['posicion_logo'] = nueva_pos
+                                    logo['comentario'] = nuevo_comentario
+                                    st.success("¡Modificado!")
+                                    st.rerun()
+                    with col_elim:
+                        if st.button("🗑️ Eliminar", key=f"del_{logo['id']}"):
+                            st.session_state.logos.remove(logo)
+                            st.warning("Orden eliminada.")
+                            st.rerun()
+                elif estado_logo == "En Progreso":
+                    st.markdown(
+                        f"""
+                        <div style="background-color: #d1fae5; border-left: 6px solid #10b981; padding: 10px; border-radius: 5px; color: #065f46; font-weight: bold;">
+                            🟢 ¡DIGITALIZANDO EN PROGRESO! (Tu turno #{posicion_en_cola} se está trabajando ahora mismo - Bloqueado para cambios)
+                        </div>
+                        """, 
+                        unsafe_allow_html=True
                     )
-                else:
-                    st.info("📁 Los archivos de bordado estarán disponibles para descarga en breve.")
                 
                 precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
-                st.write(f"Precio final: **{precio_mostrar}** | Pago: **{logo.get('pago', 'Pendiente')}**")
+                st.write(f"Precio estimado: **{precio_mostrar}**")
                 st.divider()
+
+            # Filtrar exclusivamente los terminados para la sección de entregas
+            logos_realizados = [l for l in logos_cliente if l.get('estado', 'Pendiente') == "Terminado"]
+            
+            st.subheader("✅ Trabajos Realizados y Descargas")
+            if not logos_realizados:
+                st.info("Aún no tienes trabajos terminados listos para descarga.")
+            else:
+                for logo in logos_realizados:
+                    col_img, col_info = st.columns([1, 3])
+                    with col_img:
+                        if logo.get('imagen_obj') is not None:
+                            st.image(logo['imagen_obj'], caption="Diseño", width=100)
+                            with st.popover("🔍 Ver Grande"):
+                                st.image(logo['imagen_obj'], caption=f"Diseño Terminado: {logo.get('nombre')}", use_container_width=True)
+                        else:
+                            st.info("Sin miniatura")
+                            
+                    with col_info:
+                        st.markdown(f"### 🧵 {logo.get('nombre', 'Logo')}")
+                        st.write(f"**Aplicación:** {logo.get('tipo', 'Tela')} | **Posición prenda:** {logo.get('posicion_logo', 'No especificada')}")
+                        st.write(f"**Notas:** {logo.get('comentario', 'Ninguno')}")
+                    
+                    st.success("✅ Estado: Digitalización Finalizada")
+                    
+                    if 'archivos_multiples' in logo and logo['archivos_multiples']:
+                        st.write("⬇️ **Descarga tus archivos listos:**")
+                        for idx, arch in enumerate(logo['archivos_multiples']):
+                            st.download_button(
+                                label=f"Descargar: {arch['nombre']}",
+                                data=arch['bytes'],
+                                file_name=arch['nombre'],
+                                mime="application/octet-stream",
+                                key=f"dl_multi_{logo['id']}_{idx}"
+                            )
+                    elif 'archivo_bordado_bytes' in logo and logo['archivo_bordado_bytes']:
+                        st.download_button(
+                            label=f"⬇️ Descargar Archivo Listo: {logo.get('archivo_bordado_nombre', 'bordado.dst')}",
+                            data=logo['archivo_bordado_bytes'],
+                            file_name=logo.get('archivo_bordado_nombre', 'bordado.dst'),
+                            mime="application/octet-stream",
+                            key=f"dl_{logo['id']}"
+                        )
+                    else:
+                        st.info("📁 Los archivos de bordado estarán disponibles para descarga en breve.")
+                    
+                    precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
+                    st.write(f"Precio final: **{precio_mostrar}** | Pago: **{logo.get('pago', 'Pendiente')}**")
+                    st.divider()
