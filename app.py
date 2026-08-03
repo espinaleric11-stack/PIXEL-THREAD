@@ -24,7 +24,6 @@ st.markdown(f"""
         color: #e2e8f0;
     }}
     
-    /* Fondo con tu logo corporativo integrado como marca de agua gigante, elegante y centrada */
     .stApp::before {{
         content: "";
         position: fixed;
@@ -164,19 +163,60 @@ if "recibos_pago" not in st.session_state:
 if "form_enviado" not in st.session_state:
     st.session_state.form_enviado = False
 
-# --- MENÚ DE NAVEGACIÓN RÁPIDA ---
-st.sidebar.title("Pixel Thread 🧵")
-lista_vistas = ["Panel Administrador (Tú)"] + [f"Portal {cli}" for cli in st.session_state.clientes_registrados.keys()]
-modo = st.sidebar.radio("Selecciona la Vista:", lista_vistas)
+# Control de sesión segura
+if "sesion_activa" not in st.session_state:
+    st.session_state.sesion_activa = None  # Puede ser "admin" o el nombre de un cliente
 
-st.sidebar.divider()
-st.sidebar.info("💡 Tarifa oficial: $5.00 USD / $300.00 DOP por logo digitalizado.")
-st.sidebar.caption("🔄 Actualización automática activa (cada 2 seg)")
+# --- MENÚ DE NAVEGACIÓN Y AUTENTICACIÓN LATERAL ---
+st.sidebar.title("Pixel Thread 🧵")
+
+if st.session_state.sesion_activa is None:
+    st.sidebar.subheader("🔒 Iniciar Sesión")
+    tipo_ingreso = st.sidebar.radio("Tipo de Acceso", ["Cliente", "Panel Administrador"])
+    
+    if tipo_ingreso == "Panel Administrador":
+        pin_ingresado = st.sidebar.text_input("Contraseña Administrador", type="password")
+        if st.sidebar.button("Entrar como Admin"):
+            if pin_ingresado == "2580PIXEL":
+                st.session_state.sesion_activa = "admin"
+                st.success("¡Acceso concedido!")
+                st.rerun()
+            else:
+                st.error("Contraseña incorrecta. Usa: 2580PIXEL")
+    else:
+        usuario_ingresado = st.sidebar.text_input("Ingresa tu Nombre de Usuario")
+        if st.sidebar.button("Entrar a mi Portal"):
+            if usuario_ingresado in st.session_state.clientes_registrados:
+                st.session_state.sesion_activa = usuario_ingresado
+                st.success(f"¡Bienvenido, {usuario_ingresado}!")
+                st.rerun()
+            else:
+                st.error("Usuario no encontrado o no autorizado. Solicítalo al administrador.")
+    
+    st.sidebar.divider()
+    st.sidebar.info("💡 Tarifa oficial: $5.00 USD / $300.00 DOP por logo digitalizado.")
+    st.stop()
+
+else:
+    # Botón para cerrar sesión
+    if st.sidebar.button("🚪 Cerrar Sesión"):
+        st.session_state.sesion_activa = None
+        st.rerun()
+    
+    st.sidebar.divider()
+    if st.session_state.sesion_activa == "admin":
+        st.sidebar.success("🔑 Sesión Activa: Administrador")
+    else:
+        st.sidebar.success(f"👤 Sesión Activa: {st.session_state.sesion_activa}")
+    
+    st.sidebar.divider()
+    st.sidebar.info("💡 Tarifa oficial: $5.00 USD / $300.00 DOP por logo digitalizado.")
+    st.sidebar.caption("🔄 Actualización automática activa (cada 2 seg)")
 
 # ==========================================
 # 1. VISTA ADMINISTRADOR
 # ==========================================
-if modo == "Panel Administrador (Tú)":
+if st.session_state.sesion_activa == "admin":
     st.title("🎛️ Panel de Control - Pixel Thread")
     st.write("Administra el flujo de trabajo industrial, el estado de pagos y la entrega de archivos de bordado (.DST/.EMB/.PDF).")
 
@@ -194,7 +234,7 @@ if modo == "Panel Administrador (Tú)":
         with st.form(key="form_nuevo_cliente"):
             col_nc1, col_nc2 = st.columns(2)
             with col_nc1:
-                nuevo_nombre_cli = st.text_input("Nombre del Cliente o Empresa")
+                nuevo_nombre_cli = st.text_input("Nombre de Usuario del Cliente (Ej. Cliente C)")
                 nueva_divisa_cli = st.selectbox("Moneda Principal / Divisa", ["Dólares (USD - $)", "Pesos Dominicanos (DOP - RD$)"])
             with col_nc2:
                 avatar_nuevo_file = st.file_uploader("Logo / Avatar del Cliente (Opcional)", type=["png", "jpg", "jpeg"])
@@ -214,7 +254,7 @@ if modo == "Panel Administrador (Tú)":
                             "avatar_nombre": avatar_nombre_val
                         }
                         guardar_datos()
-                        st.success(f"¡Cliente '{nuevo_nombre_cli}' agregado con éxito! Ya aparece en el menú lateral.")
+                        st.success(f"¡Cliente '{nuevo_nombre_cli}' agregado con éxito! Ya puede iniciar sesión.")
                         st.rerun()
                 else:
                     st.error("Por favor, ingresa un nombre para el cliente.")
@@ -436,9 +476,10 @@ if modo == "Panel Administrador (Tú)":
 
 
 # ==========================================
-# FUNCIÓN GENÉRICA PARA EL PORTAL DE CLIENTES
+# 2. VISTA PORTAL DE CLIENTES
 # ==========================================
-def render_portal_cliente(nombre_cliente):
+else:
+    nombre_cliente = st.session_state.sesion_activa
     info_cliente = st.session_state.clientes_registrados.get(nombre_cliente, {"divisa": "Dólares (USD - $)", "avatar_bytes": None})
     if isinstance(info_cliente, dict):
         divisa_default = info_cliente.get("divisa", "Dólares (USD - $)")
@@ -694,14 +735,3 @@ def render_portal_cliente(nombre_cliente):
             precio_mostrar = f"${logo.get('precio_usd', 5.0):.2f} USD" if "Dólares" in divisa else f"RD$ {logo.get('precio_dop', 300.0):.2f} DOP"
             st.write(f"Precio final: **{precio_mostrar}** | Pago: **{logo.get('pago', 'Pendiente')}**")
             st.divider()
-
-
-# ==========================================
-# GESTIÓN DINÁMICA DE VISTAS DE CLIENTES
-# ==========================================
-if modo == "Panel Administrador (Tú)":
-    pass
-else:
-    nombre_cliente_actual = modo.replace("Portal ", "")
-    if nombre_cliente_actual in st.session_state.clientes_registrados:
-        render_portal_cliente(nombre_cliente_actual)
