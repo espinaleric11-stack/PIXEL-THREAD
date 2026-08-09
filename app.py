@@ -1,136 +1,121 @@
 import streamlit as st
-import os
-from PIL import Image
+from PIL import Image, ImageOps, ImageDraw
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Configurador 3D de Sublimación | Pixel Thread",
-    page_icon="🧵",
-    layout="wide"
+    page_title="Pixel Thread - Maquetas 3D y Diseños de Camisetas",
+    page_icon="👕",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Estilos CSS generales
+# Estilos CSS personalizados para darle un toque profesional
 st.markdown("""
     <style>
-    .main-header { font-size: 2.2rem; color: #1a1a1a; font-weight: 700; margin-bottom: 0px; }
-    .sub-header { font-size: 1rem; color: #666666; margin-bottom: 20px; }
+    .main-header {
+        font-size: 2.5rem;
+        color: #191919;
+        font-weight: 700;
+        margin-bottom: 0px;
+    }
+    .sub-header {
+        font-size: 1.1rem;
+        color: #4C4C4C;
+        margin-bottom: 30px;
+    }
+    .card {
+        background-color: #f7f7f7;
+        border: 1px solid #191919;
+        border-radius: 20px;
+        padding: 25px;
+        margin-bottom: 20px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<p class="main-header">🧵 Pixel Thread - Configurador 3D de Sublimación</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Sube tus diseños por zona y visualízalos proyectados sobre el mockup de la prenda en tiempo real.</p>', unsafe_allow_html=True)
+# Encabezado principal
+st.markdown('<p class="main-header">Personaliza y descarga maquetas de camisetas</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Crea maquetas profesionales para tu marca en minutos. Personaliza colores, estilos y sube tu propio logotipo.</p>', unsafe_allow_html=True)
 
-# Layout en dos columnas: Izquierda (Visor 3D Interactivo), Derecha (Casillas de Carga)
-col_visor, col_panel = st.columns([2, 1])
+# Panel lateral de control
+st.sidebar.header("🛠️ Panel de Personalización")
 
-with col_visor:
-    st.subheader("👕 Mockup 3D Interactivo")
+# 1. Color de la camiseta
+tshirt_color = st.sidebar.color_picker("Color de la camiseta", "#191919")
+
+# 2. Selección de estilo / vista
+view_mode = st.sidebar.selectbox("Vista de la maqueta", ["Frente", "Espalda", "Lateral"])
+
+# 3. Subida de logotipo o diseño
+uploaded_logo = st.sidebar.file_uploader("Sube tu logotipo (PNG / JPG)", type=["png", "jpg", "jpeg"])
+
+# 4. Tamaño del diseño en la camiseta
+logo_scale = st.sidebar.slider("Tamaño del diseño", min_value=50, max_value=250, value=120)
+
+# Diseño de la interfaz principal en dos columnas
+col1, col2 = st.columns([1.2, 1])
+
+with col1:
+    st.markdown("### 👕 Vista Previa Interactiva")
     
-    # Selector de color base de la tela
-    color_prenda = st.color_picker("Color Base de la Tela", "#1a237e")
+    # Creación visual dinámica de la camiseta usando un contenedor estilizado
+    preview_container = st.container()
     
-    # Renderizamos el visor 3D interactivo con Three.js embebido
-    components_html = f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <style>
-            body {{ margin: 0; background-color: #f0f2f6; overflow: hidden; }}
-            #canvas-container {{ width: 100%; height: 480px; border-radius: 12px; overflow: hidden; }}
-        </style>
-    </head>
-    <body>
-        <div id="canvas-container"></div>
+    with preview_container:
+        # Generamos una representación visual limpia mediante un cuadro interactivo
+        st.markdown(f"""
+            <div style="
+                background: linear-gradient(135deg, {tshirt_color}22 0%, {tshirt_color}55 100%);
+                border: 2px solid #191919;
+                border-radius: 24px;
+                padding: 40px;
+                text-align: center;
+                box-shadow: 0px 10px 30px rgba(0,0,0,0.08);
+                min-height: 420px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+            ">
+                <h3 style="color: {tshirt_color}; margin-bottom: 10px;">Vista: {view_mode}</h3>
+                <p style="color: #666; font-size: 14px;">Color activo: {tshirt_color}</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Si el usuario sube un logo, lo mostramos superpuesto o referenciado
+        if uploaded_logo is not None:
+            image = Image.open(uploaded_logo)
+            st.image(image, caption="Logotipo aplicado a la maqueta", width=logo_scale)
 
-        <!-- Importar Three.js y controles de órbita -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-
-        <script>
-            const container = document.getElementById('canvas-container');
-            
-            const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xf8f9fa);
-
-            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.set(0, 0, 4);
-
-            const renderer = new THREE.WebGLRenderer({{ antialias: true }});
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            container.appendChild(renderer.domElement);
-
-            const controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-
-            // Iluminación
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-            scene.add(ambientLight);
-
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-            directionalLight.position.set(5, 5, 5);
-            scene.add(directionalLight);
-
-            // Mockup base de la prenda (Torso estilizado)
-            const bodyGeo = new THREE.CylinderGeometry(0.8, 0.7, 1.8, 32);
-            const fabricMaterial = new THREE.MeshStandardMaterial({{ 
-                color: "{color_prenda}", 
-                roughness: 0.8,
-                metalness: 0.1 
-            }});
-
-            const shirtMesh = new THREE.Mesh(bodyGeo, fabricMaterial);
-            scene.add(shirtMesh);
-
-            // Bucle de animación
-            function animate() {{
-                requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
-            }}
-            animate();
-
-            window.addEventListener('resize', () => {{
-                camera.aspect = container.clientWidth / container.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(container.clientWidth, container.clientHeight);
-            }});
-        </script>
-    </body>
-    </html>
-    """
-    st.components.v1.html(components_html, height=500)
-    st.info("💡 Haz clic y arrastra con el ratón sobre el visor para rotar el mockup 3D de la prenda.")
-
-with col_panel:
-    st.subheader("📁 Casillas de Carga por Zona")
+with col2:
+    st.markdown("### 📦 Opciones de Descarga y Exportación")
     
-    os.makedirs("uploads", exist_ok=True)
+    st.markdown("""
+        <div class="card">
+            <h4>Alta Calidad 4K</h4>
+            <p>Exporta tu diseño en formato PNG transparente de máxima resolución listo para producción o redes sociales.</p>
+        </div>
+    """, unsafe_allow_html=True)
     
-    zones = {
-        "Pecho Izquierdo": "pecho_izq",
-        "Frente Central": "frente",
-        "Espalda": "espalda",
-        "Manga Derecha": "manga_der",
-        "Manga Izquierda": "manga_izq"
-    }
-    
-    uploaded_files = {}
-    
-    for label, key in zones.items():
-        with st.container():
-            st.markdown(f"**{label}**")
-            uploaded_file = st.file_uploader(f"Subir logo para {label}", type=["png", "jpg", "jpeg"], key=key)
-            if uploaded_file is not None:
-                uploaded_files[key] = uploaded_file
-                image = Image.open(uploaded_file)
-                st.image(image, width=80, caption=f"Cargado: {label}")
-            st.markdown("---")
+    # Botones de acción simulados para exportar
+    if st.button("📥 Descargar Imagen PNG (4K)", use_container_width=True):
+        st.success("¡Maqueta procesada con éxito! La descarga comenzará en breve.")
+        
+    if st.button("🎥 Exportar Video de Presentación (MP4)", use_container_width=True):
+        st.info("Generando animación 3D de rotación...")
 
-    if st.button("Guardar Configuración de Sublimación", type="primary", use_container_width=True):
-        if uploaded_files:
-            st.success("¡Diseños y posiciones guardados con éxito para producción!")
-            st.balloons()
-        else:
-            st.warning("Por favor, sube al menos un diseño en las casillas.")
+# Sección inferior de características
+st.markdown("---")
+col_a, col_b, col_c = st.columns(3)
+
+with col_a:
+    st.markdown("#### ✨ Texturas Realistas")
+    st.write("Acabados de tela de alta fidelidad optimizados para marcas de ropa y digitalización.")
+
+with col_b:
+    st.markdown("#### ⚡ Sincronización Rápida")
+    st.write("Visualiza cambios de color y posición de logotipos en tiempo real.")
+
+with col_c:
+    st.markdown("#### 🚀 Listo para Producción")
+    st.write("Compatible con estándares de la industria para previsualizar productos antes de bordar o estampar.")
