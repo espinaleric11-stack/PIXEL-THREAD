@@ -66,7 +66,7 @@ with col_panel:
     for label, key in zones.items():
         with st.container():
             st.markdown(f"**{label}**")
-            uploaded_file = st.file_uploader(f"Subir logo para {label}", type=["png", "jpg", "jpeg", "svg"], key=key)
+            uploaded_file = st.file_uploader(f"Subir logo para {label}", type=["png", "jpg", "jpeg"], key=key)
             if uploaded_file is not None:
                 uploaded_files[key] = uploaded_file
                 image = Image.open(uploaded_file)
