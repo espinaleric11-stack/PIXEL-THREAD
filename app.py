@@ -70,7 +70,7 @@ with col_panel:
             if uploaded_file is not None:
                 uploaded_files[key] = uploaded_file
                 image = Image.open(uploaded_file)
-                st.image(image, width=80, caption=f"Cargado")
+                st.image(image, width=100, caption=f"Cargado: {label}")
             st.markdown("---")
 
     if st.button("Guardar y Enviar Configuración", type="primary", use_container_width=True):
